@@ -2,6 +2,9 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, Appearance } from 'react-native';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './firebase/config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import main app screens
 import HomeScreen from './screens/HomeScreen';
