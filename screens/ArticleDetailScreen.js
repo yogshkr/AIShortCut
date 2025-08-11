@@ -14,7 +14,7 @@ import { useTheme } from '../App';
 
 const { width } = Dimensions.get('window');
 
-const ArticleDetailScreen = ({ article, onBack, onNavigate }) => {
+const ArticleDetailScreen = ({ article, onBack, currentUser }) => {
   const theme = useTheme();
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setSaved] = useState(false);

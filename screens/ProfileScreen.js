@@ -1,11 +1,11 @@
-// screens/ProfileScreen.js (Dark Mode Support)
+// screens/ProfileScreen.js (Updated with Logout Button)
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import Header from '../components/Header';
 import BottomMenu from '../components/BottomMenu';
 import { useTheme } from '../App';
 
-const ProfileScreen = ({ onNavigate }) => {
+const ProfileScreen = ({ onNavigate, currentUser, onLogout }) => {
   const theme = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
@@ -35,23 +35,43 @@ const ProfileScreen = ({ onNavigate }) => {
     }
   };
 
+  const handleLogoutPress = () => {
+    Alert.alert(
+      "🚪 Sign Out",
+      `Are you sure you want to sign out of AI ShortCut?\n\nYou'll need to log in again to access your personalized content.`,
+      [
+        { 
+          text: "Cancel", 
+          style: "cancel" 
+        },
+        { 
+          text: "Sign Out", 
+          style: "destructive",
+          onPress: onLogout
+        }
+      ]
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Header currentScreen="Profile" />
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* User Profile Section */}
         <View style={[styles.profileSection, { backgroundColor: theme.colors.cardBackground }]}>
           <View style={[styles.avatarContainer, { backgroundColor: theme.colors.primaryButton }]}>
             <Text style={styles.avatarEmoji}>👤</Text>
           </View>
           <Text style={[styles.userName, { color: theme.colors.primaryText }]}>
-            AI News Reader
+            {currentUser?.name || 'AI News Reader'}
           </Text>
           <Text style={[styles.userEmail, { color: theme.colors.secondaryText }]}>
-            Stay updated with AI trends
+            {currentUser?.email || 'Stay updated with AI trends'}
           </Text>
         </View>
 
+        {/* User Stats */}
         <View style={[styles.statsSection, { backgroundColor: theme.colors.cardBackground }]}>
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: theme.colors.accentText }]}>47</Text>
@@ -67,6 +87,7 @@ const ProfileScreen = ({ onNavigate }) => {
           </View>
         </View>
 
+        {/* Settings Section */}
         <View style={[styles.settingsSection, { backgroundColor: theme.colors.cardBackground }]}>
           <Text style={[styles.sectionTitle, { color: theme.colors.primaryText }]}>Settings</Text>
           
@@ -130,6 +151,7 @@ const ProfileScreen = ({ onNavigate }) => {
           </TouchableOpacity>
         </View>
 
+        {/* More Actions Section */}
         <View style={[styles.actionsSection, { backgroundColor: theme.colors.cardBackground }]}>
           <Text style={[styles.sectionTitle, { color: theme.colors.primaryText }]}>More</Text>
           
@@ -160,6 +182,23 @@ const ProfileScreen = ({ onNavigate }) => {
             <Text style={[styles.arrow, { color: theme.colors.secondaryText }]}>→</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Account Section with Logout */}
+        <View style={[styles.accountSection, { backgroundColor: theme.colors.cardBackground }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.primaryText }]}>Account</Text>
+          
+          <TouchableOpacity 
+            style={[styles.logoutItem, { 
+              backgroundColor: theme.isDark ? '#450a0a' : '#fef2f2',
+              borderColor: theme.isDark ? '#dc2626' : '#fecaca'
+            }]}
+            onPress={handleLogoutPress}
+          >
+            <Text style={styles.logoutIcon}>🚪</Text>
+            <Text style={[styles.logoutText, { color: '#dc2626' }]}>Sign Out</Text>
+            <Text style={[styles.arrow, { color: '#dc2626' }]}>→</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
       
       <BottomMenu 
@@ -170,7 +209,6 @@ const ProfileScreen = ({ onNavigate }) => {
   );
 };
 
-// Keep all the same styles from before - just the colors are now dynamic
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -255,6 +293,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  accountSection: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -305,6 +353,24 @@ const styles = StyleSheet.create({
   actionText: {
     flex: 1,
     fontSize: 16,
+  },
+  logoutItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 5,
+  },
+  logoutIcon: {
+    fontSize: 20,
+    marginRight: 15,
+  },
+  logoutText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

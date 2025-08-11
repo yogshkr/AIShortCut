@@ -1,9 +1,9 @@
-// components/Header.js (With Dark Mode Toggle)
+// components/Header.js (Updated with Optional Logout)
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useTheme } from '../App';
 
-const Header = ({ currentScreen = 'Home' }) => {
+const Header = ({ currentScreen = 'Home', currentUser, onLogout }) => {
   const theme = useTheme();
 
   const getCurrentDate = () => {
@@ -30,6 +30,17 @@ const Header = ({ currentScreen = 'Home' }) => {
       case 'Saved': return 'Your Bookmarks';
       default: return 'AI News Feed';
     }
+  };
+
+  const handleQuickLogout = () => {
+    Alert.alert(
+      "🚪 Quick Sign Out",
+      "Sign out of AI ShortCut?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Sign Out", style: "destructive", onPress: onLogout }
+      ]
+    );
   };
 
   return (
@@ -63,6 +74,16 @@ const Header = ({ currentScreen = 'Home' }) => {
               {theme.isDark ? '☀️' : '🌙'}
             </Text>
           </TouchableOpacity>
+          
+          {/* User Profile / Quick Logout (only show on non-Profile screens) */}
+          {currentScreen !== 'Profile' && currentUser && (
+            <TouchableOpacity 
+              style={[styles.headerButton, { backgroundColor: theme.colors.headerButton }]}
+              onPress={handleQuickLogout}
+            >
+              <Text style={styles.headerButtonIcon}>👤</Text>
+            </TouchableOpacity>
+          )}
           
           {/* Notification Button */}
           <TouchableOpacity 

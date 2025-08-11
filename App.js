@@ -1,13 +1,18 @@
-// App.js (Fixed prop passing)
+// App.js (Updated with Article Detail Navigation)
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, Appearance } from 'react-native';
 
-// Import screens
+// Import main app screens
 import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';  
 import SavedScreen from './screens/SavedScreen';
 import ArticleDetailScreen from './screens/ArticleDetailScreen';
+
+// Import authentication screens
+import WelcomeScreen from './screens/auth/WelcomeScreen';
+import LoginScreen from './screens/auth/LoginScreen';
+import SignupScreen from './screens/auth/SignupScreen';
 
 // Create Theme Context
 const ThemeContext = createContext();
@@ -21,8 +26,16 @@ export const useTheme = () => {
 };
 
 export default function App() {
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authScreen, setAuthScreen] = useState('Welcome'); // 'Welcome', 'Login', 'Signup'
+  
+  // Main app navigation state
   const [currentScreen, setCurrentScreen] = useState('Home');
   const [selectedArticle, setSelectedArticle] = useState(null);
+  
+  // Theme state
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSystemPreference, setIsSystemPreference] = useState(true);
 
@@ -40,23 +53,55 @@ export default function App() {
     return () => subscription?.remove();
   }, [isSystemPreference]);
 
-  const handleNavigation = (screenName) => {
-    console.log(`Navigation called: ${screenName}`);
+  // Authentication handlers
+  const handleAuthNavigation = (screenName) => {
+    console.log(`Auth navigation to: ${screenName}`);
+    setAuthScreen(screenName);
+  };
+
+  const handleLoginSuccess = (userData) => {
+    console.log(`Login successful for: ${userData.email}`);
+    setCurrentUser(userData);
+    setIsAuthenticated(true);
+    setCurrentScreen('Home');
+  };
+
+  const handleSignupSuccess = (userData) => {
+    console.log(`Signup successful for: ${userData.email}`);
+    setCurrentUser(userData);
+    setIsAuthenticated(true);
+    setCurrentScreen('Home');
+  };
+
+  const handleLogout = () => {
+    console.log('User logged out');
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setAuthScreen('Welcome');
+    setSelectedArticle(null); // Clear any selected article
+  };
+
+  // Main app navigation handlers
+  const handleMainNavigation = (screenName) => {
+    console.log(`Main app navigation to: ${screenName}`);
     setCurrentScreen(screenName);
     setSelectedArticle(null); // Clear selected article when navigating to main screens
   };
 
+  // Article detail navigation handlers
   const handleArticleDetail = (article) => {
-    console.log(`Opening article: ${article.headline}`);
+    console.log(`Opening article detail: ${article.headline}`);
     setSelectedArticle(article);
     setCurrentScreen('ArticleDetail');
   };
 
   const handleBackFromArticle = () => {
-    setCurrentScreen('Home'); // Return to home screen
+    console.log('Returning from article detail');
+    setCurrentScreen('Home'); // Return to home (or remember previous screen)
     setSelectedArticle(null);
   };
 
+  // Theme handlers
   const toggleDarkMode = () => {
     setIsSystemPreference(false);
     setIsDarkMode(prev => !prev);
@@ -96,61 +141,107 @@ export default function App() {
     }
   };
 
-// In App.js - renderCurrentScreen function
-const renderCurrentScreen = () => {
-  // Handle ArticleDetail screen separately
-  if (currentScreen === 'ArticleDetail' && selectedArticle) {
-    return (
-      <ArticleDetailScreen
-        article={selectedArticle}
-        onBack={handleBackFromArticle}
-        onNavigate={handleNavigation}
-        key="article-detail"
-      />
-    );
-  }
+  // Render authentication screens
+  const renderAuthScreens = () => {
+    switch(authScreen) {
+      case 'Welcome':
+        return (
+          <WelcomeScreen 
+            onNavigateToLogin={() => handleAuthNavigation('Login')}
+            onNavigateToSignup={() => handleAuthNavigation('Signup')}
+          />
+        );
+      case 'Login':
+        return (
+          <LoginScreen 
+            onBack={() => handleAuthNavigation('Welcome')}
+            onNavigateToSignup={() => handleAuthNavigation('Signup')}
+            onLoginSuccess={handleLoginSuccess}
+          />
+        );
+      case 'Signup':
+        return (
+          <SignupScreen 
+            onBack={() => handleAuthNavigation('Welcome')}
+            onNavigateToLogin={() => handleAuthNavigation('Login')}
+            onSignupSuccess={handleSignupSuccess}
+          />
+        );
+      default:
+        return (
+          <WelcomeScreen 
+            onNavigateToLogin={() => handleAuthNavigation('Login')}
+            onNavigateToSignup={() => handleAuthNavigation('Signup')}
+          />
+        );
+    }
+  };
 
-  // Handle main screens with proper prop passing
-  switch(currentScreen) {
-    case 'Home':
+  // Render main app screens
+  const renderMainAppScreens = () => {
+    // Handle ArticleDetail screen
+    if (currentScreen === 'ArticleDetail' && selectedArticle) {
       return (
-        <HomeScreen 
-          onNavigate={handleNavigation}
-          onArticleDetail={handleArticleDetail}  // ✅ Passed to HomeScreen
-          key="home" 
+        <ArticleDetailScreen
+          article={selectedArticle}
+          onBack={handleBackFromArticle}
+          currentUser={currentUser}
+          key="article-detail"
         />
       );
-    case 'Profile':
-      return (
-        <ProfileScreen 
-          onNavigate={handleNavigation}
-          key="profile" 
-        />
-      );
-    case 'Saved':
-      return (
-        <SavedScreen 
-          onNavigate={handleNavigation}
-          onArticleDetail={handleArticleDetail}  // ✅ Must be passed to SavedScreen
-          key="saved" 
-        />
-      );
-    default:
-      return (
-        <HomeScreen 
-          onNavigate={handleNavigation}
-          onArticleDetail={handleArticleDetail}
-          key="home-default" 
-        />
-      );
-  }
-};
+    }
+
+    // Handle main screens
+    switch(currentScreen) {
+      case 'Home':
+        return (
+          <HomeScreen 
+            onNavigate={handleMainNavigation}
+            onArticleDetail={handleArticleDetail}
+            currentUser={currentUser}
+            onLogout={handleLogout}
+            key="home" 
+          />
+        );
+      case 'Profile':
+        return (
+          <ProfileScreen 
+            onNavigate={handleMainNavigation}
+            currentUser={currentUser}
+            onLogout={handleLogout}
+            key="profile" 
+          />
+        );
+      case 'Saved':
+        return (
+          <SavedScreen 
+            onNavigate={handleMainNavigation}
+            onArticleDetail={handleArticleDetail}
+            currentUser={currentUser}
+            onLogout={handleLogout}
+            key="saved" 
+          />
+        );
+      default:
+        return (
+          <HomeScreen 
+            onNavigate={handleMainNavigation}
+            onArticleDetail={handleArticleDetail}
+            currentUser={currentUser}
+            onLogout={handleLogout}
+            key="home-default" 
+          />
+        );
+    }
+  };
 
   return (
     <ThemeContext.Provider value={theme}>
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <StatusBar style={isDarkMode ? "light" : "dark"} />
-        {renderCurrentScreen()}
+        
+        {/* Show authentication screens if not authenticated, main app if authenticated */}
+        {isAuthenticated ? renderMainAppScreens() : renderAuthScreens()}
       </View>
     </ThemeContext.Provider>
   );

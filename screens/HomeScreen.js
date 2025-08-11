@@ -7,7 +7,7 @@ import BottomMenu from '../components/BottomMenu';
 import { sampleNewsData } from '../data/newsData';
 import { useTheme } from '../App';
 
-const HomeScreen = ({ onNavigate, onArticleDetail }) => {
+const HomeScreen = ({ onNavigate, onArticleDetail, currentUser, onLogout }) => {
   const theme = useTheme();
   const [likedArticles, setLikedArticles] = useState({});
   const [savedArticles, setSavedArticles] = useState({});
@@ -56,7 +56,10 @@ const HomeScreen = ({ onNavigate, onArticleDetail }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Header currentScreen="Home" />
+      <Header currentScreen="Home" 
+      currentUser={currentUser}
+        onLogout={onLogout}
+        />
       
       <ScrollView 
         style={styles.contentContainer} 

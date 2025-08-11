@@ -6,7 +6,7 @@ import BottomMenu from '../components/BottomMenu';
 import NewsCard from '../components/NewsCard';
 import { useTheme } from '../App';
 
-const SavedScreen = ({ onNavigate, onArticleDetail }) => {
+const SavedScreen = ({ onNavigate, onArticleDetail, currentUser, onLogout }) => {
   const theme = useTheme();
 
   // Sample saved articles (in a real app, this would come from storage/Firebase)
@@ -112,7 +112,11 @@ const SavedScreen = ({ onNavigate, onArticleDetail }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Header currentScreen="Saved" />
+      <Header 
+      currentScreen="Saved"
+      currentUser={currentUser}
+        onLogout={onLogout}
+         />
       
       <View style={[styles.headerActions, { backgroundColor: theme.colors.cardBackground }]}>
         <Text style={[styles.savedCount, { color: theme.colors.accentText }]}>
