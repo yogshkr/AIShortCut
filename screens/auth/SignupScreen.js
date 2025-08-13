@@ -1,5 +1,9 @@
 // screens/auth/SignupScreen.js
 import React, { useState } from 'react';
+// Add Firebase imports:
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../../firebase/firebaseConfig';
 import { 
   View, 
   Text, 
@@ -14,7 +18,7 @@ import { useTheme } from '../../App';
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
 
-const SignupScreen = ({ onBack, onNavigateToLogin, onSignupSuccess }) => {
+const SignupScreen = ({ onBack, onNavigateToLogin }) => {
   const theme = useTheme();
   const [formData, setFormData] = useState({
     name: '',
@@ -56,35 +60,72 @@ const SignupScreen = ({ onBack, onNavigateToLogin, onSignupSuccess }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSignup = async () => {
-    if (!validateForm()) return;
+// Replace handleSignup function with:
+const handleSignup = async () => {
+  if (!validateForm()) return;
+  
+  setLoading(true);
+  
+  try {
+    // Create user account
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      formData.email.trim(),
+      formData.password
+    );
     
-    setLoading(true);
+    const user = userCredential.user;
     
-    // Simulate signup API call (we'll replace with Firebase later)
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network delay
-      
-      Alert.alert(
-        "🎉 Account Created!",
-        `Welcome to AI ShortCut, ${formData.name}! Your account has been created successfully.`,
-        [
-          { 
-            text: "Continue", 
-            onPress: () => onSignupSuccess({
-              name: formData.name,
-              email: formData.email,
-              isNewUser: true,
-            })
-          }
-        ]
-      );
-    } catch (error) {
-      Alert.alert("Signup Failed", "Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+    // Update user profile with name
+    await updateProfile(user, {
+      displayName: formData.name.trim(),
+    });
+    
+    // Create user document in Firestore
+    await setDoc(doc(db, 'users', user.uid), {
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      createdAt: new Date().toISOString(),
+      preferences: {
+        notifications: true,
+        darkMode: false,
+        topics: []
+      },
+      stats: {
+        articlesRead: 0,
+        articlesLiked: 0,
+        articlesSaved: 0
+      }
+    });
+    
+    console.log('Signup successful:', user.email);
+    Alert.alert(
+      "🎉 Account Created!",
+      `Welcome to AI ShortCut, ${formData.name}! Your account has been created successfully.`
+    );
+    
+  } catch (error) {
+    console.error('Signup error:', error);
+    let errorMessage = 'Account creation failed. Please try again.';
+    
+    switch (error.code) {
+      case 'auth/email-already-in-use':
+        errorMessage = 'An account with this email already exists.';
+        break;
+      case 'auth/weak-password':
+        errorMessage = 'Password should be at least 6 characters.';
+        break;
+      case 'auth/invalid-email':
+        errorMessage = 'Please enter a valid email address.';
+        break;
     }
-  };
+    
+    Alert.alert("Signup Failed", errorMessage);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));

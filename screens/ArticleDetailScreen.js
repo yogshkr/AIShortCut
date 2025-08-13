@@ -11,6 +11,8 @@ import {
   Dimensions 
 } from 'react-native';
 import { useTheme } from '../App';
+import { markArticleAsRead, updateReadingProgress } from '../firebase/firebaseService';
+
 
 const { width } = Dimensions.get('window');
 
@@ -19,6 +21,15 @@ const ArticleDetailScreen = ({ article, onBack, currentUser }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setSaved] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
+
+  // Add this useEffect after your existing state declarations
+useEffect(() => {
+  if (currentUser && article) {
+    // Mark article as read when user opens it
+    markArticleAsRead(currentUser.uid, article.id);
+  }
+}, [currentUser, article]);
+
 
   // Sample full article content (in real app, this would come from Firebase)
   const fullContent = `
@@ -61,11 +72,20 @@ The consensus among experts is that this represents just the beginning of a tran
 This ongoing evolution highlights the importance of staying informed about AI developments and their potential impact on various aspects of our lives and work.
   `;
 
-  const handleScroll = (event) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const progress = contentOffset.y / (contentSize.height - layoutMeasurement.height);
-    setReadingProgress(Math.min(Math.max(progress, 0), 1));
-  };
+  // Replace your existing handleScroll function
+const handleScroll = (event) => {
+  const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+  const progress = contentOffset.y / (contentSize.height - layoutMeasurement.height);
+  const progressPercent = Math.min(Math.max(progress, 0), 1);
+  
+  setReadingProgress(progressPercent);
+  
+  // Update reading progress in Firebase when user scrolls significantly
+  if (currentUser && article && progressPercent > 0.1) {
+    updateReadingProgress(currentUser.uid, article.id, Math.round(progressPercent * 100));
+  }
+};
+
 
   const handleLike = () => {
     setIsLiked(prev => !prev);

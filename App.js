@@ -3,7 +3,7 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, Appearance } from 'react-native';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from './firebase/config';
+import { auth } from './firebase/firebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import main app screens
@@ -29,14 +29,16 @@ export const useTheme = () => {
 };
 
 export default function App() {
-  // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [authScreen, setAuthScreen] = useState('Welcome'); // 'Welcome', 'Login', 'Signup'
-  
-  // Main app navigation state
-  const [currentScreen, setCurrentScreen] = useState('Home');
-  const [selectedArticle, setSelectedArticle] = useState(null);
+// Replace the existing authentication state section with:
+// Authentication state
+const [isAuthenticated, setIsAuthenticated] = useState(false);
+const [currentUser, setCurrentUser] = useState(null);
+const [authScreen, setAuthScreen] = useState('Welcome');
+const [loading, setLoading] = useState(true); // Add loading state
+
+// Main app navigation state
+const [currentScreen, setCurrentScreen] = useState('Home');
+const [selectedArticle, setSelectedArticle] = useState(null);
   
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -44,17 +46,47 @@ export default function App() {
 
   // Detect system appearance on app start
   useEffect(() => {
-    const systemColorScheme = Appearance.getColorScheme();
-    setIsDarkMode(systemColorScheme === 'dark');
+  // --- Appearance theme handling ---
+  const systemColorScheme = Appearance.getColorScheme();
+  setIsDarkMode(systemColorScheme === 'dark');
 
-    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      if (isSystemPreference) {
-        setIsDarkMode(colorScheme === 'dark');
-      }
-    });
+  const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+    if (isSystemPreference) {
+      setIsDarkMode(colorScheme === 'dark');
+    }
+  });
 
-    return () => subscription?.remove();
-  }, [isSystemPreference]);
+  // --- Authentication state handling ---
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // User is signed in
+      const userData = {
+        uid: user.uid,
+        email: user.email,
+        name: user.displayName || user.email.split('@')[0],
+      };
+      setCurrentUser(userData);
+      setIsAuthenticated(true);
+
+      await AsyncStorage.setItem('currentUser', JSON.stringify(userData));
+    } else {
+      // User is signed out
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setAuthScreen('Welcome');
+
+      await AsyncStorage.removeItem('currentUser');
+    }
+    setLoading(false);
+  });
+
+  // --- Combined cleanup ---
+  return () => {
+    subscription?.remove();
+    unsubscribe();
+  };
+}, [isSystemPreference]);
+
 
   // Authentication handlers
   const handleAuthNavigation = (screenName) => {
@@ -76,13 +108,17 @@ export default function App() {
     setCurrentScreen('Home');
   };
 
-  const handleLogout = () => {
-    console.log('User logged out');
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    setAuthScreen('Welcome');
-    setSelectedArticle(null); // Clear any selected article
-  };
+// Replace handleLogout with:
+const handleLogout = async () => {
+  try {
+    await auth.signOut();
+    console.log('User logged out successfully');
+  } catch (error) {
+    console.error('Logout error:', error);
+    Alert.alert('Logout Error', 'Something went wrong while logging out.');
+  }
+};
+
 
   // Main app navigation handlers
   const handleMainNavigation = (screenName) => {

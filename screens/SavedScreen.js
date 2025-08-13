@@ -1,69 +1,124 @@
 // screens/SavedScreen.js (Complete Article Detail Navigation)
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import Header from '../components/Header';
 import BottomMenu from '../components/BottomMenu';
 import NewsCard from '../components/NewsCard';
 import { useTheme } from '../App';
+import { subscribeToArticles, getUserInteractions } from '../firebase/firebaseService'; // Make sure these are exported
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase/firebaseConfig'; // Adjust path if needed
+import { updateUserInteraction } from '../firebase/firebaseService'; // Add this import
 
 const SavedScreen = ({ onNavigate, onArticleDetail, currentUser, onLogout }) => {
   const theme = useTheme();
 
-  // Sample saved articles (in a real app, this would come from storage/Firebase)
-  const [savedArticles] = useState([
-    {
-      id: 2,
-      headline: "Google's Gemini Ultra Outperforms Human Experts",
-      summary: "Google's newest AI model demonstrates superior performance in professional examinations, marking a significant milestone in artificial intelligence development.",
-      imageUrl: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&h=200&fit=crop",
-      topics: ["Google", "AI Research", "Performance"],
-      publishDate: "2024-01-14",
-      author: "AI ShortCut Team", 
-      readTime: "3 min read",
-    },
-    {
-      id: 4,
-      headline: "Autonomous AI Agents Transform Business Operations", 
-      summary: "Companies worldwide are deploying AI agents that can independently handle customer service, data analysis, and decision-making processes.",
-      imageUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=200&fit=crop",
-      topics: ["Business", "Automation", "AI Agents"],
-      publishDate: "2024-01-12",
-      author: "AI ShortCut Team",
-      readTime: "3 min read",
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [likedArticles, setLikedArticles] = useState({});
+  const [savedArticlesList, setSavedArticlesList] = useState({});
+
+    useEffect(() => {
+    const loadSavedArticles = async () => {
+      setLoading(true);
+      try {
+        // Fetch all articles and user interactions
+        const [allArticles, userInteractions] = await Promise.all([
+          subscribeToArticles(),
+          getUserInteractions(currentUser.uid)
+        ]);
+
+        // Normalize articles if needed
+        const normalizedArticles = allArticles.map(article => {
+          const jsonKey = Object.keys(article).find(key => key !== 'id');
+          let fields = {};
+          try {
+            fields = JSON.parse(jsonKey);
+          } catch (e) {
+            fields = {};
+          }
+          return {
+            id: article.id,
+            ...fields,
+          };
+        });
+
+        // Filter saved articles
+        const savedIds = userInteractions.savedArticles || [];
+        const likedIds = userInteractions.likedArticles || [];
+        setArticles(normalizedArticles.filter(article => savedIds.includes(article.id)));
+
+        // Set saved/liked status for UI
+        const savedMap = {};
+        savedIds.forEach(id => { savedMap[id] = true; });
+        setSavedArticlesList(savedMap);
+
+        const likedMap = {};
+        likedIds.forEach(id => { likedMap[id] = true; });
+        setLikedArticles(likedMap);
+
+      } catch (error) {
+        console.error('Error loading saved articles:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (currentUser) {
+      loadSavedArticles();
     }
-  ]);
+  }, [currentUser]);
 
-  const [likedArticles, setLikedArticles] = useState({2: true, 4: false});
-  const [savedArticlesList, setSavedArticlesList] = useState({2: true, 4: true});
+const handleLike = async (articleId) => {
+  const isLiked = !likedArticles[articleId];
+  setLikedArticles(prev => ({
+    ...prev,
+    [articleId]: isLiked
+  }));
 
-  const handleLike = (articleId) => {
-    setLikedArticles(prev => ({
-      ...prev,
-      [articleId]: !prev[articleId]
-    }));
-    
-    const isLiked = !likedArticles[articleId];
-    Alert.alert(
-      isLiked ? "❤️ Liked!" : "💔 Unliked",
-      isLiked ? "Added to your liked articles" : "Removed from liked articles"
-    );
-  };
+  // Update Firestore
+  try {
+    await updateUserInteraction(currentUser.uid, articleId, 'like', isLiked);
+  } catch (error) {
+    console.error('Error updating like status in Firestore:', error);
+  }
 
-  const handleUnsave = (articleId) => {
-    setSavedArticlesList(prev => ({
-      ...prev,
-      [articleId]: false
-    }));
-    
-    Alert.alert(
-      "🗑️ Removed from Saved",
-      "Article removed from your saved list",
-      [
-        { text: "Undo", onPress: () => setSavedArticlesList(prev => ({...prev, [articleId]: true})) },
-        { text: "OK", style: "default" }
-      ]
-    );
-  };
+  Alert.alert(
+    isLiked ? "❤️ Liked!" : "💔 Unliked",
+    isLiked ? "Added to your liked articles" : "Removed from liked articles"
+  );
+};
+
+const handleUnsave = async (articleId) => {
+  setSavedArticlesList(prev => ({
+    ...prev,
+    [articleId]: false
+  }));
+
+  // Update Firestore: remove article from savedArticles
+  try {
+    await updateUserInteraction(currentUser.uid, articleId, 'save', false);
+  } catch (error) {
+    console.error('Error updating saved status in Firestore:', error);
+  }
+
+  Alert.alert(
+    "🗑️ Removed from Saved",
+    "Article removed from your saved list",
+    [
+      { text: "Undo", onPress: async () => {
+        setSavedArticlesList(prev => ({ ...prev, [articleId]: true }));
+        // Update Firestore: add article back to savedArticles
+        try {
+          await updateUserInteraction(currentUser.uid, articleId, 'save', true);
+        } catch (error) {
+          console.error('Error restoring saved status in Firestore:', error);
+        }
+      }},
+      { text: "OK", style: "default" }
+    ]
+  );
+};
 
   const handleShare = (article) => {
     Alert.alert(
@@ -93,22 +148,31 @@ const SavedScreen = ({ onNavigate, onArticleDetail, currentUser, onLogout }) => 
   };
 
   const clearAllSaved = () => {
-    Alert.alert(
-      "🗑️ Clear All Saved",
-      "Are you sure you want to remove all saved articles?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Clear All", 
-          style: "destructive",
-          onPress: () => setSavedArticlesList({})
+  Alert.alert(
+    "🗑️ Clear All Saved",
+    "Are you sure you want to remove all saved articles?",
+    [
+      { text: "Cancel", style: "cancel" },
+      { 
+        text: "Clear All", 
+        style: "destructive",
+        onPress: async () => {
+          setSavedArticlesList({});
+          // Remove all saved articles in Firestore
+          try {
+            const userRef = doc(db, 'users', currentUser.uid);
+            await updateDoc(userRef, { savedArticles: [] });
+          } catch (error) {
+            console.error('Error clearing saved articles in Firestore:', error);
+          }
         }
-      ]
-    );
-  };
+      }
+    ]
+  );
+};
 
   // Filter articles that are still saved
-  const currentSavedArticles = savedArticles.filter(article => savedArticlesList[article.id]);
+  const currentSavedArticles = articles.filter(article => savedArticlesList[article.id]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -137,7 +201,12 @@ const SavedScreen = ({ onNavigate, onArticleDetail, currentUser, onLogout }) => 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {currentSavedArticles.length > 0 ? (
+           {loading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>⏳</Text>
+            <Text style={[styles.emptyTitle, { color: theme.colors.primaryText }]}>Loading...</Text>
+          </View>
+        ) : currentSavedArticles.length > 0 ? (
           <>
             {currentSavedArticles.map(article => (
               <NewsCard

@@ -1,6 +1,8 @@
-// screens/ProfileScreen.js (Updated with Logout Button)
-import React, { useState } from 'react';
+// screens/ProfileScreen.js (Updated with Firebase Stats)
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/firebaseConfig';
 import Header from '../components/Header';
 import BottomMenu from '../components/BottomMenu';
 import { useTheme } from '../App';
@@ -8,6 +10,34 @@ import { useTheme } from '../App';
 const ProfileScreen = ({ onNavigate, currentUser, onLogout }) => {
   const theme = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [userStats, setUserStats] = useState({
+    articlesRead: 0,
+    articlesLiked: 0,
+    articlesSaved: 0
+  });
+
+  // Fetch real user statistics from Firebase
+  useEffect(() => {
+    const fetchUserStats = async () => {
+      if (currentUser) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setUserStats({
+              articlesRead: userData.stats?.articlesRead || 0,
+              articlesLiked: userData.likedArticles?.length || 0,
+              articlesSaved: userData.savedArticles?.length || 0
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching user stats:', error);
+        }
+      }
+    };
+
+    fetchUserStats();
+  }, [currentUser]);
 
   const handleSettingToggle = (setting, value) => {
     if (setting === 'notifications') {
@@ -71,18 +101,18 @@ const ProfileScreen = ({ onNavigate, currentUser, onLogout }) => {
           </Text>
         </View>
 
-        {/* User Stats */}
+        {/* User Stats - Now with real Firebase data */}
         <View style={[styles.statsSection, { backgroundColor: theme.colors.cardBackground }]}>
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: theme.colors.accentText }]}>47</Text>
+            <Text style={[styles.statNumber, { color: theme.colors.accentText }]}>{userStats.articlesRead}</Text>
             <Text style={[styles.statLabel, { color: theme.colors.secondaryText }]}>Articles Read</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: theme.colors.accentText }]}>12</Text>
+            <Text style={[styles.statNumber, { color: theme.colors.accentText }]}>{userStats.articlesSaved}</Text>
             <Text style={[styles.statLabel, { color: theme.colors.secondaryText }]}>Saved</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: theme.colors.accentText }]}>8</Text>
+            <Text style={[styles.statNumber, { color: theme.colors.accentText }]}>{userStats.articlesLiked}</Text>
             <Text style={[styles.statLabel, { color: theme.colors.secondaryText }]}>Liked</Text>
           </View>
         </View>

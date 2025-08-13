@@ -1,42 +1,144 @@
 // screens/HomeScreen.js (Updated for Article Detail Navigation)
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Text } from 'react-native';
 import Header from '../components/Header';
 import NewsCard from '../components/NewsCard';
 import BottomMenu from '../components/BottomMenu';
 import { sampleNewsData } from '../data/newsData';
 import { useTheme } from '../App';
+// Add these imports
+import { subscribeToArticles, getUserInteractions, updateUserInteraction } from '../firebase/firebaseService';
+
+
 
 const HomeScreen = ({ onNavigate, onArticleDetail, currentUser, onLogout }) => {
   const theme = useTheme();
-  const [likedArticles, setLikedArticles] = useState({});
-  const [savedArticles, setSavedArticles] = useState({});
+// Replace the existing state with:
+const [articles, setArticles] = useState([]);
+const [likedArticles, setLikedArticles] = useState([]);
+const [savedArticles, setSavedArticles] = useState([]);
+const [loading, setLoading] = useState(true);
 
-  const handleLike = (articleId) => {
-    setLikedArticles(prev => ({
-      ...prev,
-      [articleId]: !prev[articleId]
-    }));
-    
-    const isLiked = !likedArticles[articleId];
-    Alert.alert(
-      isLiked ? "❤️ Liked!" : "💔 Unliked",
-      isLiked ? "Added to your liked articles" : "Removed from liked articles"
-    );
-  };
+// Add useEffect to fetch data
+useEffect(() => {
+  if (currentUser) {
+    loadData();
+  }
+}, [currentUser]);
 
-  const handleSave = (articleId) => {
-    setSavedArticles(prev => ({
-      ...prev,
-      [articleId]: !prev[articleId]
-    }));
+const loadData = async () => {
+  try {
+    setLoading(true);
     
-    const isSaved = !savedArticles[articleId];
-    Alert.alert(
-      isSaved ? "💾 Saved!" : "🗑️ Unsaved",
-      isSaved ? "Article saved for later reading" : "Article removed from saved list"
+    // Fetch articles and user interactions simultaneously
+    const [articlesData, userInteractions] = await Promise.all([
+      subscribeToArticles(),
+      getUserInteractions(currentUser.uid)
+    ]);
+    
+    setArticles(articlesData);
+    setLikedArticles(userInteractions.likedArticles);
+    setSavedArticles(userInteractions.savedArticles);
+  } catch (error) {
+    console.error('Error loading data:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+function normalizeArticles(rawArticles) {
+  return rawArticles.map(article => {
+    // Find the key that contains the JSON string
+    const jsonKey = Object.keys(article).find(
+      key => key !== 'id'
     );
-  };
+    let fields = {};
+    try {
+      fields = JSON.parse(jsonKey);
+    } catch (e) {
+      fields = {};
+    }
+    return {
+      id: article.id,
+      ...fields,
+    };
+  });
+}
+
+const normalizedArticles = normalizeArticles(articles);
+
+// Replace handleLike function:
+const handleLike = async (articleId) => {
+  const isCurrentlyLiked = likedArticles.includes(articleId);
+  const newLikedState = !isCurrentlyLiked;
+  
+  // Optimistic update
+  if (newLikedState) {
+    setLikedArticles(prev => [...prev, articleId]);
+  } else {
+    setLikedArticles(prev => prev.filter(id => id !== articleId));
+  }
+  
+  // Update in Firebase
+  const success = await updateUserInteraction(
+    currentUser.uid, 
+    articleId, 
+    'like', 
+    newLikedState
+  );
+  
+  if (success) {
+    Alert.alert(
+      newLikedState ? "❤️ Liked!" : "💔 Unliked",
+      newLikedState ? "Added to your liked articles" : "Removed from liked articles"
+    );
+  } else {
+    // Revert optimistic update on failure
+    if (newLikedState) {
+      setLikedArticles(prev => prev.filter(id => id !== articleId));
+    } else {
+      setLikedArticles(prev => [...prev, articleId]);
+    }
+    Alert.alert("Error", "Failed to update. Please try again.");
+  }
+};
+
+// Replace handleSave function:
+const handleSave = async (articleId) => {
+  const isCurrentlySaved = savedArticles.includes(articleId);
+  const newSavedState = !isCurrentlySaved;
+  
+  // Optimistic update
+  if (newSavedState) {
+    setSavedArticles(prev => [...prev, articleId]);
+  } else {
+    setSavedArticles(prev => prev.filter(id => id !== articleId));
+  }
+  
+  // Update in Firebase
+  const success = await updateUserInteraction(
+    currentUser.uid, 
+    articleId, 
+    'save', 
+    newSavedState
+  );
+  
+  if (success) {
+    Alert.alert(
+      newSavedState ? "💾 Saved!" : "🗑️ Unsaved",
+      newSavedState ? "Article saved for later reading" : "Article removed from saved list"
+    );
+  } else {
+    // Revert optimistic update on failure
+    if (newSavedState) {
+      setSavedArticles(prev => prev.filter(id => id !== articleId));
+    } else {
+      setSavedArticles(prev => [...prev, articleId]);
+    }
+    Alert.alert("Error", "Failed to update. Please try again.");
+  }
+};
+
 
   const handleShare = (article) => {
     Alert.alert(
@@ -66,18 +168,33 @@ const HomeScreen = ({ onNavigate, onArticleDetail, currentUser, onLogout }) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {sampleNewsData.map(article => (
-          <NewsCard
-            key={article.id}
-            article={article}
-            isLiked={likedArticles[article.id] || false}
-            isSaved={savedArticles[article.id] || false}
-            onLike={handleLike}
-            onSave={handleSave}
-            onShare={handleShare}
-            onReadMore={handleReadMore}
-          />
-        ))}
+{loading ? (
+  <View style={styles.loadingContainer}>
+    <Text style={[styles.loadingText, { color: theme.colors.secondaryText }]}>
+      Loading AI news...
+    </Text>
+  </View>
+) : normalizedArticles.length > 0 ? (
+  normalizedArticles.map(article => (
+    <NewsCard
+      key={article.id}
+      article={article}
+      isLiked={likedArticles.includes(article.id)}
+      isSaved={savedArticles.includes(article.id)}
+      onLike={handleLike}
+      onSave={handleSave}
+      onShare={handleShare}
+      onReadMore={handleReadMore}
+    />
+  ))
+) : (
+  <View style={styles.emptyContainer}>
+    <Text style={[styles.emptyText, { color: theme.colors.secondaryText }]}>
+      No articles available
+    </Text>
+  </View>
+)}
+
         
         <View style={styles.endMessage}>
           <Text style={[styles.endText, { color: theme.colors.accentText }]}>

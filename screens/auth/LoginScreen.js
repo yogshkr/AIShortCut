@@ -1,5 +1,8 @@
 // screens/auth/LoginScreen.js
 import React, { useState } from 'react';
+// Add Firebase import:
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../firebase/firebaseConfig';
 import { 
   View, 
   Text, 
@@ -14,7 +17,7 @@ import { useTheme } from '../../App';
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
 
-const LoginScreen = ({ onBack, onNavigateToSignup, onLoginSuccess }) => {
+const LoginScreen = ({ onBack, onNavigateToSignup }) => {
   const theme = useTheme();
   const [formData, setFormData] = useState({
     email: '',
@@ -42,35 +45,47 @@ const LoginScreen = ({ onBack, onNavigateToSignup, onLoginSuccess }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleLogin = async () => {
-    if (!validateForm()) return;
+// Replace handleLogin function with:
+const handleLogin = async () => {
+  if (!validateForm()) return;
+  
+  setLoading(true);
+  
+  try {
+    const userCredential = await signInWithEmailAndPassword(
+      auth, 
+      formData.email.trim(), 
+      formData.password
+    );
     
-    setLoading(true);
+    console.log('Login successful:', userCredential.user.email);
+    // onLoginSuccess will be called automatically by onAuthStateChanged
     
-    // Simulate login API call (we'll replace with Firebase later)
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-      
-      // For now, accept any valid email/password combination
-      Alert.alert(
-        "🎉 Login Successful!",
-        `Welcome back! Logging you into AI ShortCut.`,
-        [
-          { 
-            text: "Continue", 
-            onPress: () => onLoginSuccess({
-              email: formData.email,
-              name: formData.email.split('@')[0], // Use email prefix as name
-            })
-          }
-        ]
-      );
-    } catch (error) {
-      Alert.alert("Login Failed", "Please check your credentials and try again.");
-    } finally {
-      setLoading(false);
+  } catch (error) {
+    console.error('Login error:', error);
+    let errorMessage = 'Login failed. Please try again.';
+    
+    switch (error.code) {
+      case 'auth/user-not-found':
+        errorMessage = 'No account found with this email address.';
+        break;
+      case 'auth/wrong-password':
+        errorMessage = 'Incorrect password. Please try again.';
+        break;
+      case 'auth/invalid-email':
+        errorMessage = 'Please enter a valid email address.';
+        break;
+      case 'auth/too-many-requests':
+        errorMessage = 'Too many failed attempts. Please try again later.';
+        break;
     }
-  };
+    
+    Alert.alert("Login Failed", errorMessage);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
