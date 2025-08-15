@@ -1,6 +1,6 @@
 // screens/HomeScreen.js (Updated for Article Detail Navigation)
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Text } from 'react-native';
+import React, { useState, useEffect, useCallback  } from 'react';
+import { View, StyleSheet, ScrollView, Alert, Text, RefreshControl  } from 'react-native';
 import Header from '../components/Header';
 import NewsCard from '../components/NewsCard';
 import BottomMenu from '../components/BottomMenu';
@@ -42,6 +42,31 @@ const loadData = async () => {
     setLoading(false);
   }
 };
+
+// Add this state with your existing useState hooks
+const [refreshing, setRefreshing] = useState(false);
+
+// Add this refresh function
+const onRefresh = useCallback(async () => {
+  setRefreshing(true);
+  try {
+    // Reload articles data
+    const freshArticles = await subscribeToArticles();
+    setArticles(freshArticles);
+    
+    // Reload user interactions if needed
+    if (currentUser) {
+      const userInteractions = await getUserInteractions(currentUser.uid);
+      setLikedArticles(userInteractions.likedArticles || {});
+      // setSavedArticlesList(userInteractions.savedArticles || {});
+    }
+  } catch (error) {
+    console.error('Error refreshing data:', error);
+  } finally {
+    setRefreshing(false);
+  }
+}, [currentUser]);
+
 
 // Replace handleLike function:
 const handleLike = async (articleId) => {
@@ -115,14 +140,14 @@ const handleSave = async (articleId) => {
   }
 };
 
-
   const handleShare = (article) => {
     Alert.alert(
       "📤 Share Article",
-      `Sharing: "${article.headline}"\n\nThis will open your device's share menu with the article link.`,
+      `!!Feature comin soon!!`,
+// Sharing: "${article.headline}"\n\nThis will open your device's share menu with the article link.
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Share", onPress: () => console.log("Sharing article:", article.headline) }
+        { text: "Back", onPress: () => console.log("Sharing article:", article.headline) }
       ]
     );
   };
@@ -143,6 +168,14 @@ const handleSave = async (articleId) => {
         style={styles.contentContainer} 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      tintColor={theme.colors.primaryButton} // iOS
+      colors={[theme.colors.primaryButton]} // Android
+    />
+  }
       >
 {loading ? (
   <View style={styles.loadingContainer}>

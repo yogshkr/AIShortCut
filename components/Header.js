@@ -76,14 +76,14 @@ const Header = ({ currentScreen = 'Home', currentUser, onLogout }) => {
           </TouchableOpacity>
           
           {/* User Profile / Quick Logout (only show on non-Profile screens) */}
-          {currentScreen !== 'Profile' && currentUser && (
+          {/* {currentScreen !== 'Profile' && currentUser && (
             <TouchableOpacity 
               style={[styles.headerButton, { backgroundColor: theme.colors.headerButton }]}
               onPress={handleQuickLogout}
             >
               <Text style={styles.headerButtonIcon}>👤</Text>
             </TouchableOpacity>
-          )}
+          )} */}
           
           {/* Notification Button */}
           <TouchableOpacity 

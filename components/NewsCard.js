@@ -21,6 +21,7 @@ const NewsCard = ({
         shadowColor: theme.isDark ? '#000' : '#000',
       }]} 
       onPress={() => onReadMore(article)}
+      activeOpacity={1}
     >
       <Image source={{ uri: article.imageUrl }} style={styles.cardImage} />
       
@@ -42,14 +43,14 @@ const NewsCard = ({
           </View>
         </View>
         
-        <Text 
+        {/* <Text 
           style={[styles.cardSummary, { color: theme.colors.secondaryText }]} 
           numberOfLines={3}
         >
           {article.summary}
-        </Text>
+        </Text> */}
         
-        <View style={styles.topicsContainer}>
+        {/* <View style={styles.topicsContainer}>
           {article.topics.map((topic, index) => (
             <View 
               key={index} 
@@ -64,7 +65,7 @@ const NewsCard = ({
               </Text>
             </View>
           ))}
-        </View>
+        </View> */}
         
         <View style={styles.cardActions}>
           <View style={styles.smallButtonsRow}>
@@ -123,7 +124,7 @@ const NewsCard = ({
             style={[styles.readMoreButton, { backgroundColor: theme.colors.primaryButton }]} 
             onPress={() => onReadMore(article)}
           >
-            <Text style={styles.readMoreText}>Read Full Article →</Text>
+            <Text style={styles.readMoreText}>Get ShortCut →</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -1,6 +1,6 @@
 // screens/SavedScreen.js (Complete Article Detail Navigation)
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback  } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl  } from 'react-native';
 import Header from '../components/Header';
 import BottomMenu from '../components/BottomMenu';
 import NewsCard from '../components/NewsCard';
@@ -70,6 +70,46 @@ useEffect(() => {
   }
 }, [currentUser]);
 
+// Add this state with your existing useState hooks
+const [refreshing, setRefreshing] = useState(false);
+
+// Add this refresh function
+const onRefresh = useCallback(async () => {
+  setRefreshing(true);
+  try {
+    // Reload saved articles
+    const [allArticles, userInteractions] = await Promise.all([
+      subscribeToArticles(),
+      getUserInteractions(currentUser.uid)
+    ]);
+
+    const articles = Array.isArray(allArticles) ? allArticles : [];
+    const savedIds = Array.isArray(userInteractions?.savedArticles) ? userInteractions.savedArticles : [];
+    const likedIds = Array.isArray(userInteractions?.likedArticles) ? userInteractions.likedArticles : [];
+
+    const savedArticles = articles.filter(article => 
+      article && article.id && savedIds.includes(article.id)
+    );
+    
+    setArticles(savedArticles);
+
+    // Update UI states
+    const savedMap = {};
+    savedIds.forEach(id => { savedMap[id] = true; });
+    setSavedArticlesList(savedMap);
+
+    const likedMap = {};
+    likedIds.forEach(id => { likedMap[id] = true; });
+    setLikedArticles(likedMap);
+
+  } catch (error) {
+    console.error('Error refreshing saved articles:', error);
+  } finally {
+    setRefreshing(false);
+  }
+}, [currentUser]);
+
+
 const handleLike = async (articleId) => {
   const isLiked = !likedArticles[articleId];
   setLikedArticles(prev => ({
@@ -120,14 +160,15 @@ const handleUnsave = async (articleId) => {
     ]
   );
 };
-
+// 
+// Sharing: "${article.headline}"\n\nThis will open your device's share menu with the article link.
   const handleShare = (article) => {
     Alert.alert(
       "📤 Share Saved Article",
-      `Sharing: "${article.headline}"\n\nThis will open your device's share menu with the article link.`,
+      `!!Featue comin soon!!`,
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Share", onPress: () => console.log("Sharing saved article:", article.headline) }
+        { text: "Back", onPress: () => console.log("Sharing saved article:", article.headline) }
       ]
     );
   };
@@ -204,6 +245,14 @@ const currentSavedArticles = Array.isArray(articles) ?
         style={styles.content} 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      tintColor={theme.colors.primaryButton} // iOS
+      colors={[theme.colors.primaryButton]} // Android
+    />
+  }
       >
            {loading ? (
   <View style={styles.emptyState}>

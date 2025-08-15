@@ -112,10 +112,10 @@ const handleSave = async () => {
   const handleShare = () => {
     Alert.alert(
       "📤 Share Article",
-      `Sharing: "${article.headline}"\n\nThis will open your device's share menu.`,
+      `!!Feature coming soon!!.`,
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Share", onPress: () => console.log("Sharing article:", article.headline) }
+        { text: "Back", onPress: () => console.log("Sharing article:", article.headline) }
       ]
     );
   };
@@ -267,32 +267,6 @@ const handleSave = async () => {
     systemFonts={['System']}
   />
 </View>
-
-
-        {/* Related Articles */}
-        <View style={[styles.relatedSection, { backgroundColor: theme.colors.cardBackground }]}>
-          <Text style={[styles.relatedTitle, { color: theme.colors.primaryText }]}>
-            Related Articles
-          </Text>
-          
-          <TouchableOpacity style={styles.relatedItem}>
-            <Text style={[styles.relatedHeadline, { color: theme.colors.accentText }]}>
-              OpenAI Announces ChatGPT-5: Next Generation AI
-            </Text>
-            <Text style={[styles.relatedSummary, { color: theme.colors.secondaryText }]}>
-              The latest iteration promises enhanced reasoning capabilities...
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.relatedItem}>
-            <Text style={[styles.relatedHeadline, { color: theme.colors.accentText }]}>
-              AI Ethics: Balancing Innovation and Responsibility
-            </Text>
-            <Text style={[styles.relatedSummary, { color: theme.colors.secondaryText }]}>
-              As AI becomes more powerful, ethical considerations become crucial...
-            </Text>
-          </TouchableOpacity>
-        </View>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
