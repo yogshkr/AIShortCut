@@ -18,56 +18,57 @@ const SavedScreen = ({ onNavigate, onArticleDetail, currentUser, onLogout }) => 
   const [likedArticles, setLikedArticles] = useState({});
   const [savedArticlesList, setSavedArticlesList] = useState({});
 
-    useEffect(() => {
-    const loadSavedArticles = async () => {
-      setLoading(true);
-      try {
-        // Fetch all articles and user interactions
-        const [allArticles, userInteractions] = await Promise.all([
-          subscribeToArticles(),
-          getUserInteractions(currentUser.uid)
-        ]);
+useEffect(() => {
+  const loadSavedArticles = async () => {
+    setLoading(true);
+    try {
+      // Fetch all articles and user interactions
+      const [allArticles, userInteractions] = await Promise.all([
+        subscribeToArticles(),
+        getUserInteractions(currentUser.uid)
+      ]);
 
-        // Normalize articles if needed
-        const normalizedArticles = allArticles.map(article => {
-          const jsonKey = Object.keys(article).find(key => key !== 'id');
-          let fields = {};
-          try {
-            fields = JSON.parse(jsonKey);
-          } catch (e) {
-            fields = {};
-          }
-          return {
-            id: article.id,
-            ...fields,
-          };
-        });
+      // REMOVED OLD NORMALIZATION - subscribeToArticles now handles this properly
+      console.log('✅ Loaded articles:', allArticles?.length || 0);
+      console.log('✅ User interactions:', userInteractions);
 
-        // Filter saved articles
-        const savedIds = userInteractions.savedArticles || [];
-        const likedIds = userInteractions.likedArticles || [];
-        setArticles(normalizedArticles.filter(article => savedIds.includes(article.id)));
+      // Ensure we have valid arrays
+      const articles = Array.isArray(allArticles) ? allArticles : [];
+      const savedIds = Array.isArray(userInteractions?.savedArticles) ? userInteractions.savedArticles : [];
+      const likedIds = Array.isArray(userInteractions?.likedArticles) ? userInteractions.likedArticles : [];
 
-        // Set saved/liked status for UI
-        const savedMap = {};
-        savedIds.forEach(id => { savedMap[id] = true; });
-        setSavedArticlesList(savedMap);
+      // Filter saved articles
+      const savedArticles = articles.filter(article => 
+        article && article.id && savedIds.includes(article.id)
+      );
+      
+      console.log('✅ Filtered saved articles:', savedArticles.length);
+      setArticles(savedArticles);
 
-        const likedMap = {};
-        likedIds.forEach(id => { likedMap[id] = true; });
-        setLikedArticles(likedMap);
+      // Set saved/liked status for UI
+      const savedMap = {};
+      savedIds.forEach(id => { savedMap[id] = true; });
+      setSavedArticlesList(savedMap);
 
-      } catch (error) {
-        console.error('Error loading saved articles:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      const likedMap = {};
+      likedIds.forEach(id => { likedMap[id] = true; });
+      setLikedArticles(likedMap);
 
-    if (currentUser) {
-      loadSavedArticles();
+    } catch (error) {
+      console.error('❌ Error loading saved articles:', error);
+      // Set safe defaults on error
+      setArticles([]);
+      setSavedArticlesList({});
+      setLikedArticles({});
+    } finally {
+      setLoading(false);
     }
-  }, [currentUser]);
+  };
+
+  if (currentUser) {
+    loadSavedArticles();
+  }
+}, [currentUser]);
 
 const handleLike = async (articleId) => {
   const isLiked = !likedArticles[articleId];
@@ -172,7 +173,10 @@ const handleUnsave = async (articleId) => {
 };
 
   // Filter articles that are still saved
-  const currentSavedArticles = articles.filter(article => savedArticlesList[article.id]);
+// Filter articles that are still saved - WITH SAFE ARRAY HANDLING
+const currentSavedArticles = Array.isArray(articles) ? 
+  articles.filter(article => article && savedArticlesList[article.id]) : [];
+
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -202,25 +206,33 @@ const handleUnsave = async (articleId) => {
         contentContainerStyle={styles.scrollContent}
       >
            {loading ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>⏳</Text>
-            <Text style={[styles.emptyTitle, { color: theme.colors.primaryText }]}>Loading...</Text>
-          </View>
-        ) : currentSavedArticles.length > 0 ? (
-          <>
-            {currentSavedArticles.map(article => (
-              <NewsCard
-                key={article.id}
-                article={article}
-                isLiked={likedArticles[article.id] || false}
-                isSaved={savedArticlesList[article.id] || false}
-                onLike={handleLike}
-                onSave={handleUnsave}
-                onShare={handleShare}
-                onReadMore={handleReadMore}
-              />
-            ))}
-          </>
+  <View style={styles.emptyState}>
+    <Text style={styles.emptyIcon}>⏳</Text>
+    <Text style={[styles.emptyTitle, { color: theme.colors.primaryText }]}>Loading...</Text>
+  </View>
+) : currentSavedArticles.length > 0 ? (
+  <>
+    {currentSavedArticles.map(article => {
+      // Add safety check for each article
+      if (!article || !article.id) {
+        console.warn('⚠️ Invalid article data:', article);
+        return null;
+      }
+      
+      return (
+        <NewsCard
+          key={article.id}
+          article={article}
+          isLiked={likedArticles[article.id] || false}
+          isSaved={savedArticlesList[article.id] || false}
+          onLike={handleLike}
+          onSave={handleUnsave}
+          onShare={handleShare}
+          onReadMore={handleReadMore}
+        />
+      );
+    })}
+  </>
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📂</Text>

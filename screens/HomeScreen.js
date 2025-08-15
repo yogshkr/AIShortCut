@@ -4,12 +4,9 @@ import { View, StyleSheet, ScrollView, Alert, Text } from 'react-native';
 import Header from '../components/Header';
 import NewsCard from '../components/NewsCard';
 import BottomMenu from '../components/BottomMenu';
-import { sampleNewsData } from '../data/newsData';
 import { useTheme } from '../App';
 // Add these imports
 import { subscribeToArticles, getUserInteractions, updateUserInteraction } from '../firebase/firebaseService';
-
-
 
 const HomeScreen = ({ onNavigate, onArticleDetail, currentUser, onLogout }) => {
   const theme = useTheme();
@@ -45,27 +42,6 @@ const loadData = async () => {
     setLoading(false);
   }
 };
-
-function normalizeArticles(rawArticles) {
-  return rawArticles.map(article => {
-    // Find the key that contains the JSON string
-    const jsonKey = Object.keys(article).find(
-      key => key !== 'id'
-    );
-    let fields = {};
-    try {
-      fields = JSON.parse(jsonKey);
-    } catch (e) {
-      fields = {};
-    }
-    return {
-      id: article.id,
-      ...fields,
-    };
-  });
-}
-
-const normalizedArticles = normalizeArticles(articles);
 
 // Replace handleLike function:
 const handleLike = async (articleId) => {
@@ -174,8 +150,8 @@ const handleSave = async (articleId) => {
       Loading AI news...
     </Text>
   </View>
-) : normalizedArticles.length > 0 ? (
-  normalizedArticles.map(article => (
+) : articles.length > 0 ? (
+  articles.map(article => (
     <NewsCard
       key={article.id}
       article={article}

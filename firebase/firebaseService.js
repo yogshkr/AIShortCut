@@ -15,6 +15,7 @@ import {
 import { db } from './firebaseConfig';
 
 // Fetch articles from Firestore
+// Fetch articles from Firestore (UPDATED VERSION)
 export const subscribeToArticles = async () => {
   try {
     const q = query(collection(db, 'articles'));
@@ -22,17 +23,51 @@ export const subscribeToArticles = async () => {
     const articles = [];
     
     querySnapshot.forEach((doc) => {
-      articles.push({
+      const docData = doc.data();
+      let articleData;
+      const dataKeys = Object.keys(docData);
+      
+      // Handle nested JSON structure (from previous incorrect storage)
+      if (dataKeys.length === 1 && dataKeys[0].startsWith('{')) {
+        try {
+          articleData = JSON.parse(dataKeys[0]);
+          console.log('📄 Parsed nested data:', articleData);
+        } catch (parseError) {
+          console.error('Error parsing nested data:', parseError);
+          articleData = docData;
+        }
+      } else {
+        articleData = docData;
+      }
+      
+      // Ensure all required fields exist and are in correct format
+      const processedArticle = {
         id: doc.id,
-        ...doc.data()
-      });
+        headline: articleData.headline || 'Untitled Article',
+        summary: articleData.summary || 'No summary available',
+        content: articleData.content || articleData.summary || 'No content available', // Rich HTML content
+        author: articleData.author || 'Unknown Author',
+        publishDate: articleData.publishDate || new Date().toLocaleDateString(),
+        readTime: articleData.readTime || '5 min read',
+        imageUrl: articleData.imageUrl || 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800',
+        topics: Array.isArray(articleData.topics) ? articleData.topics : 
+                (typeof articleData.topics === 'string' ? [articleData.topics] : 
+                ['AI', 'Technology']), // Ensure topics is always an array
+        createdAt: articleData.createdAt || new Date(),
+        updatedAt: articleData.updatedAt || new Date()
+      };
+      
+      articles.push(processedArticle);
     });
+    
+    console.log(`✅ Processed ${articles.length} articles successfully`);
     return articles;
   } catch (error) {
-    console.error('Error fetching articles:', error);
+    console.error('❌ Error fetching articles:', error);
     return [];
   }
 };
+
 
 // Get user interactions (likes, saves)
 export const getUserInteractions = async (userId) => {

@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useTheme } from '../App';
 import { markArticleAsRead, updateReadingProgress } from '../firebase/firebaseService';
+import RenderHtml from 'react-native-render-html';
+
 
 
 const { width } = Dimensions.get('window');
@@ -31,46 +33,12 @@ useEffect(() => {
 }, [currentUser, article]);
 
 
-  // Sample full article content (in real app, this would come from Firebase)
   const fullContent = `
 ${article.summary}
 
-Artificial intelligence continues to reshape industries worldwide, with breakthrough developments emerging at an unprecedented pace. This latest advancement represents a significant milestone in the field, demonstrating capabilities that were previously thought to be years away.
+---
 
-## Key Developments
-
-The recent progress in AI technology has been driven by several key factors:
-
-**Advanced Neural Networks**: New architectures have enabled more sophisticated reasoning and problem-solving capabilities, allowing AI systems to tackle complex challenges with greater accuracy and efficiency.
-
-**Massive Data Processing**: The ability to process and learn from enormous datasets has significantly improved AI performance across various domains, from natural language understanding to computer vision.
-
-**Computational Breakthroughs**: Enhanced computing power and optimized algorithms have made it possible to train larger, more capable models that can handle increasingly complex tasks.
-
-## Industry Impact
-
-This development is expected to have far-reaching implications across multiple sectors:
-
-- **Healthcare**: Improved diagnostic accuracy and treatment personalization
-- **Finance**: Enhanced fraud detection and risk assessment capabilities  
-- **Education**: Personalized learning experiences and intelligent tutoring systems
-- **Transportation**: Safer autonomous vehicle technologies
-- **Research**: Accelerated scientific discovery and analysis
-
-## Looking Forward
-
-As we move into this new era of artificial intelligence, several trends are becoming clear. The technology is becoming more accessible to businesses of all sizes, enabling widespread adoption and innovation. At the same time, important questions about ethics, safety, and regulation continue to evolve.
-
-The implications of these advances extend beyond immediate practical applications. They represent a fundamental shift in how we approach problem-solving and decision-making across industries. Organizations that can successfully integrate these technologies while addressing associated challenges will likely find themselves at a significant competitive advantage.
-
-## Expert Perspectives
-
-Leading researchers in the field have expressed both excitement and caution about these developments. While the potential benefits are enormous, they emphasize the importance of responsible development and deployment of these powerful technologies.
-
-The consensus among experts is that this represents just the beginning of a transformative period in AI development. The next few years are likely to bring even more remarkable advances as research continues and practical applications expand.
-
-This ongoing evolution highlights the importance of staying informed about AI developments and their potential impact on various aspects of our lives and work.
-  `;
+${article.content || 'Content not available for this article.'}`;
 
   // Replace your existing handleScroll function
 const handleScroll = (event) => {
@@ -193,11 +161,75 @@ const handleScroll = (event) => {
         </View>
 
         {/* Article Content */}
-        <View style={[styles.articleContent, { backgroundColor: theme.colors.cardBackground }]}>
-          <Text style={[styles.contentText, { color: theme.colors.primaryText }]}>
-            {fullContent.trim()}
-          </Text>
-        </View>
+<View style={[styles.articleContent, { backgroundColor: theme.colors.cardBackground }]}>
+  {/* Summary Section */}
+  <Text style={[styles.sectionTitle, { color: theme.colors.primaryText }]}>
+    Summary
+  </Text>
+  <Text style={[styles.contentText, { color: theme.colors.secondaryText, marginBottom: 20 }]}>
+    {article.summary}
+  </Text>
+  
+  {/* Full Content Section - HTML RENDERING */}
+  <Text style={[styles.sectionTitle, { color: theme.colors.primaryText }]}>
+    Full Article
+  </Text>
+  
+  <RenderHtml
+    contentWidth={width - 70}
+    source={{ html: article.content || '<p>Rich content not available for this article.</p>' }}
+    tagsStyles={{
+      p: {
+        fontSize: 16,
+        lineHeight: 26,
+        textAlign: 'justify',
+        color: theme.colors.primaryText,
+        marginBottom: 15,
+      },
+      img: {
+        borderRadius: 12,
+        marginVertical: 15,
+      },
+      h1: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: theme.colors.primaryText,
+        marginTop: 20,
+        marginBottom: 10,
+      },
+      h2: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: theme.colors.primaryText,
+        marginTop: 15,
+        marginBottom: 8,
+      },
+      strong: {
+        fontWeight: 'bold',
+        color: theme.colors.primaryText,
+      },
+      em: {
+        fontStyle: 'italic',
+        color: theme.colors.primaryText,
+      },
+      ul: {
+        color: theme.colors.primaryText,
+        marginVertical: 10,
+      },
+      ol: {
+        color: theme.colors.primaryText,
+        marginVertical: 10,
+      },
+      li: {
+        color: theme.colors.primaryText,
+        fontSize: 16,
+        lineHeight: 24,
+      },
+    }}
+    systemFonts={['System']}
+  />
+</View>
+
 
         {/* Related Articles */}
         <View style={[styles.relatedSection, { backgroundColor: theme.colors.cardBackground }]}>
@@ -447,6 +479,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  // Add this to your styles object in ArticleDetailScreen.js
+sectionTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  marginBottom: 10,
+},
+
 });
 
 export default ArticleDetailScreen;
