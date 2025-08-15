@@ -11,8 +11,11 @@ import {
   Dimensions 
 } from 'react-native';
 import { useTheme } from '../App';
-import { markArticleAsRead, updateReadingProgress } from '../firebase/firebaseService';
+import { markArticleAsRead, updateReadingProgress, getUserInteractions } from '../firebase/firebaseService';
 import RenderHtml from 'react-native-render-html';
+ // Add this import at the top
+import { updateUserInteraction } from '../firebase/firebaseService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 
@@ -20,17 +23,31 @@ const { width } = Dimensions.get('window');
 
 const ArticleDetailScreen = ({ article, onBack, currentUser }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets(); 
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setSaved] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
 
   // Add this useEffect after your existing state declarations
+// Add this useEffect after your existing one
 useEffect(() => {
-  if (currentUser && article) {
-    // Mark article as read when user opens it
+  const loadUserInteractions = async () => {
+    if (currentUser && article) {
+      try {
+        const userInteractions = await getUserInteractions(currentUser.uid);
+        setIsLiked(userInteractions.likedArticles?.includes(article.id) || false);
+        setSaved(userInteractions.savedArticles?.includes(article.id) || false);
+      } catch (error) {
+        console.error('Error loading user interactions:', error);
+      }
+      
     markArticleAsRead(currentUser.uid, article.id);
-  }
+    }
+  };
+
+  loadUserInteractions();
 }, [currentUser, article]);
+
 
 
   const fullContent = `
@@ -55,21 +72,42 @@ const handleScroll = (event) => {
 };
 
 
-  const handleLike = () => {
-    setIsLiked(prev => !prev);
-    Alert.alert(
-      isLiked ? "💔 Unliked" : "❤️ Liked!",
-      isLiked ? "Removed from liked articles" : "Added to your liked articles"
-    );
-  };
 
-  const handleSave = () => {
-    setSaved(prev => !prev);
-    Alert.alert(
-      isSaved ? "🗑️ Unsaved" : "💾 Saved!",
-      isSaved ? "Removed from saved articles" : "Article saved for later reading"
-    );
-  };
+// Replace handleLike function
+const handleLike = async () => {
+  const newLikedState = !isLiked;
+  setIsLiked(newLikedState);
+  
+  // Update Firebase
+  try {
+    await updateUserInteraction(currentUser.uid, article.id, 'like', newLikedState);
+  } catch (error) {
+    console.error('Error updating like status:', error);
+  }
+
+  Alert.alert(
+    newLikedState ? "❤️ Liked!" : "💔 Unliked",
+    newLikedState ? "Added to your liked articles" : "Removed from liked articles"
+  );
+};
+
+// Replace handleSave function
+const handleSave = async () => {
+  const newSavedState = !isSaved;
+  setSaved(newSavedState);
+  
+  // Update Firebase
+  try {
+    await updateUserInteraction(currentUser.uid, article.id, 'save', newSavedState);
+  } catch (error) {
+    console.error('Error updating save status:', error);
+  }
+
+  Alert.alert(
+    newSavedState ? "💾 Saved!" : "🗑️ Unsaved",
+    newSavedState ? "Article saved for later reading" : "Removed from saved articles"
+  );
+};
 
   const handleShare = () => {
     Alert.alert(
@@ -262,7 +300,8 @@ const handleScroll = (event) => {
       {/* Bottom Action Bar */}
       <View style={[styles.actionBar, { 
         backgroundColor: theme.colors.cardBackground,
-        borderTopColor: theme.colors.border 
+        borderTopColor: theme.colors.border, 
+  paddingBottom: insets.bottom + 15,
       }]}>
         <TouchableOpacity 
           style={[

@@ -16,6 +16,7 @@ import ArticleDetailScreen from './screens/ArticleDetailScreen';
 import WelcomeScreen from './screens/auth/WelcomeScreen';
 import LoginScreen from './screens/auth/LoginScreen';
 import SignupScreen from './screens/auth/SignupScreen';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Create Theme Context
 const ThemeContext = createContext();
@@ -275,6 +276,7 @@ const handleLogout = async () => {
   };
 
   return (
+    <SafeAreaProvider>
     <ThemeContext.Provider value={theme}>
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <StatusBar style={isDarkMode ? "light" : "dark"} />
@@ -282,6 +284,6 @@ const handleLogout = async () => {
         {/* Show authentication screens if not authenticated, main app if authenticated */}
         {isAuthenticated ? renderMainAppScreens() : renderAuthScreens()}
       </View>
-    </ThemeContext.Provider>
+    </ThemeContext.Provider></SafeAreaProvider>
   );
 }
