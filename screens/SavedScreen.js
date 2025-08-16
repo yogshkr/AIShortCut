@@ -124,10 +124,10 @@ const handleLike = async (articleId) => {
     console.error('Error updating like status in Firestore:', error);
   }
 
-  Alert.alert(
-    isLiked ? "❤️ Liked!" : "💔 Unliked",
-    isLiked ? "Added to your liked articles" : "Removed from liked articles"
-  );
+  // Alert.alert(
+  //   isLiked ? "❤️ Liked!" : "💔 Unliked",
+  //   isLiked ? "Added to your liked articles" : "Removed from liked articles"
+  // );
 };
 
 const handleUnsave = async (articleId) => {
@@ -143,22 +143,22 @@ const handleUnsave = async (articleId) => {
     console.error('Error updating saved status in Firestore:', error);
   }
 
-  Alert.alert(
-    "🗑️ Removed from Saved",
-    "Article removed from your saved list",
-    [
-      { text: "Undo", onPress: async () => {
-        setSavedArticlesList(prev => ({ ...prev, [articleId]: true }));
-        // Update Firestore: add article back to savedArticles
-        try {
-          await updateUserInteraction(currentUser.uid, articleId, 'save', true);
-        } catch (error) {
-          console.error('Error restoring saved status in Firestore:', error);
-        }
-      }},
-      { text: "OK", style: "default" }
-    ]
-  );
+  // Alert.alert(
+  //   "🗑️ Removed from Saved",
+  //   "Article removed from your saved list",
+  //   [
+  //     { text: "Undo", onPress: async () => {
+  //       setSavedArticlesList(prev => ({ ...prev, [articleId]: true }));
+  //       // Update Firestore: add article back to savedArticles
+  //       try {
+  //         await updateUserInteraction(currentUser.uid, articleId, 'save', true);
+  //       } catch (error) {
+  //         console.error('Error restoring saved status in Firestore:', error);
+  //       }
+  //     }},
+  //     { text: "OK", style: "default" }
+  //   ]
+  // );
 };
 // 
 // Sharing: "${article.headline}"\n\nThis will open your device's share menu with the article link.

@@ -1,4 +1,4 @@
-// screens/ArticleDetailScreen.js
+// screens/FullArticleScreen.js
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
-const ArticleDetailScreen = ({ article, onBack, currentUser }) => {
+const FullArticleScreen = ({ article, onBack, currentUser }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets(); 
   const [isLiked, setIsLiked] = useState(false);
@@ -85,10 +85,10 @@ const handleLike = async () => {
     console.error('Error updating like status:', error);
   }
 
-  Alert.alert(
-    newLikedState ? "❤️ Liked!" : "💔 Unliked",
-    newLikedState ? "Added to your liked articles" : "Removed from liked articles"
-  );
+  // Alert.alert(
+  //   newLikedState ? "❤️ Liked!" : "💔 Unliked",
+  //   newLikedState ? "Added to your liked articles" : "Removed from liked articles"
+  // );
 };
 
 // Replace handleSave function
@@ -103,10 +103,10 @@ const handleSave = async () => {
     console.error('Error updating save status:', error);
   }
 
-  Alert.alert(
-    newSavedState ? "💾 Saved!" : "🗑️ Unsaved",
-    newSavedState ? "Article saved for later reading" : "Removed from saved articles"
-  );
+  // Alert.alert(
+  //   newSavedState ? "💾 Saved!" : "🗑️ Unsaved",
+  //   newSavedState ? "Article saved for later reading" : "Removed from saved articles"
+  // );
 };
 
   const handleShare = () => {
@@ -217,53 +217,54 @@ const handleSave = async () => {
     contentWidth={width - 70}
     source={{ html: article.content || '<p>Rich content not available for this article.</p>' }}
     tagsStyles={{
-      p: {
-        fontSize: 16,
-        lineHeight: 26,
-        textAlign: 'justify',
-        color: theme.colors.primaryText,
-        marginBottom: 15,
-      },
-      img: {
-        borderRadius: 12,
-        marginVertical: 15,
-      },
-      h1: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: theme.colors.primaryText,
-        marginTop: 20,
-        marginBottom: 10,
-      },
-      h2: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: theme.colors.primaryText,
-        marginTop: 15,
-        marginBottom: 8,
-      },
-      strong: {
-        fontWeight: 'bold',
-        color: theme.colors.primaryText,
-      },
-      em: {
-        fontStyle: 'italic',
-        color: theme.colors.primaryText,
-      },
-      ul: {
-        color: theme.colors.primaryText,
-        marginVertical: 10,
-      },
-      ol: {
-        color: theme.colors.primaryText,
-        marginVertical: 10,
-      },
-      li: {
-        color: theme.colors.primaryText,
-        fontSize: 16,
-        lineHeight: 24,
-      },
-    }}
+  p: {
+    fontSize: 16,
+    lineHeight: 26,
+    textAlign: 'justify',
+    color: theme.colors.primaryText,
+    marginBottom: 15,
+  },
+  h1: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: theme.colors.primaryText,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  h2: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.colors.primaryText,
+    marginTop: 15,
+    marginBottom: 8,
+  },
+  strong: {
+    fontWeight: 'bold',
+    color: theme.colors.primaryText,
+  },
+  em: {
+    fontStyle: 'italic',
+    color: theme.colors.primaryText,
+  },
+  ul: {
+    color: theme.colors.primaryText,
+    marginVertical: 10,
+  },
+  ol: {
+    color: theme.colors.primaryText,
+    marginVertical: 10,
+  },
+  li: {
+    color: theme.colors.primaryText,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  img: {
+    borderRadius: 12,
+    marginVertical: 15,
+  },
+}}
+
     systemFonts={['System']}
   />
 </View>
@@ -492,7 +493,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  // Add this to your styles object in ArticleDetailScreen.js
+  // Add this to your styles object in FullArticleScreen.js
 sectionTitle: {
   fontSize: 18,
   fontWeight: 'bold',
@@ -501,4 +502,4 @@ sectionTitle: {
 
 });
 
-export default ArticleDetailScreen;
+export default FullArticleScreen;

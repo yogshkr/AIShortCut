@@ -89,10 +89,10 @@ const handleLike = async (articleId) => {
   );
   
   if (success) {
-    Alert.alert(
-      newLikedState ? "❤️ Liked!" : "💔 Unliked",
-      newLikedState ? "Added to your liked articles" : "Removed from liked articles"
-    );
+    // Alert.alert(
+    //   newLikedState ? "❤️ Liked!" : "💔 Unliked",
+    //   newLikedState ? "Added to your liked articles" : "Removed from liked articles"
+    // );
   } else {
     // Revert optimistic update on failure
     if (newLikedState) {
@@ -125,10 +125,10 @@ const handleSave = async (articleId) => {
   );
   
   if (success) {
-    Alert.alert(
-      newSavedState ? "💾 Saved!" : "🗑️ Unsaved",
-      newSavedState ? "Article saved for later reading" : "Article removed from saved list"
-    );
+    // Alert.alert(
+    //   newSavedState ? "💾 Saved!" : "🗑️ Unsaved",
+    //   newSavedState ? "Article saved for later reading" : "Article removed from saved list"
+    // );
   } else {
     // Revert optimistic update on failure
     if (newSavedState) {

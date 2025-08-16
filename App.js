@@ -10,7 +10,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';  
 import SavedScreen from './screens/SavedScreen';
-import ArticleDetailScreen from './screens/ArticleDetailScreen';
+// import ArticleDetailScreen from './screens/ArticleDetailScreen';
+
+import FullArticleScreen from './screens/FullArticleScreen';
+import AIShortCut from './screens/AIShortCut';
 
 // Import authentication screens
 import WelcomeScreen from './screens/auth/WelcomeScreen';
@@ -140,7 +143,17 @@ const handleLogout = async () => {
     setCurrentScreen('Home'); // Return to home (or remember previous screen)
     setSelectedArticle(null);
   };
+  // Add this new back handler
+const handleBackFromFullArticle = () => {
+  console.log('Returning from full article to preview');
+  setCurrentScreen('ArticleDetail'); // Go back to AIShortCut preview
+  // Keep selectedArticle - don't set to null
+};
 
+const handleFullArticleNavigation = (article) => {
+  console.log(`Opening full article: ${article.headline}`);
+  setCurrentScreen('FullArticle'); // We'll handle this case next
+};
   // Theme handlers
   const toggleDarkMode = () => {
     setIsSystemPreference(false);
@@ -221,15 +234,29 @@ const handleLogout = async () => {
   const renderMainAppScreens = () => {
     // Handle ArticleDetail screen
     if (currentScreen === 'ArticleDetail' && selectedArticle) {
-      return (
-        <ArticleDetailScreen
-          article={selectedArticle}
-          onBack={handleBackFromArticle}
-          currentUser={currentUser}
-          key="article-detail"
-        />
-      );
-    }
+  return (
+    <AIShortCut
+      article={selectedArticle}
+      onBack={handleBackFromArticle}
+      currentUser={currentUser}
+      onReadFullArticle={handleFullArticleNavigation} // Add this new prop
+      key="article-detail"
+    />
+  );
+}
+// Add this new case after the ArticleDetail case:
+// Update the FullArticle case:
+if (currentScreen === 'FullArticle' && selectedArticle) {
+  return (
+    <FullArticleScreen
+      article={selectedArticle}
+      onBack={handleBackFromFullArticle} // Use the new back handler
+      currentUser={currentUser}
+      key="full-article"
+    />
+  );
+}
+
 
     // Handle main screens
     switch(currentScreen) {
