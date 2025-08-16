@@ -1,94 +1,145 @@
-// screens/auth/WelcomeScreen.js
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
-  TouchableOpacity, 
-  Dimensions,
-  StatusBar 
+  TouchableOpacity
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../../App';
 
-const { width, height } = Dimensions.get('window');
-
-const WelcomeScreen = ({ onNavigateToLogin, onNavigateToSignup }) => {
+const WelcomeScreen = React.memo(({ onNavigateToLogin, onNavigateToSignup }) => {
   const theme = useTheme();
 
+  // Memoized navigation handlers
+  const handleNavigateToLogin = useCallback(() => {
+    onNavigateToLogin();
+  }, [onNavigateToLogin]);
+
+  const handleNavigateToSignup = useCallback(() => {
+    onNavigateToSignup();
+  }, [onNavigateToSignup]);
+
+  // Memoized dynamic styles
+  const containerStyle = useMemo(() => [
+    styles.container,
+    { backgroundColor: theme.colors.background }
+  ], [theme.colors.background]);
+
+  const logoTextStyle = useMemo(() => [
+    styles.logoText,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const taglineStyle = useMemo(() => [
+    styles.tagline,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const descriptionStyle = useMemo(() => [
+    styles.description,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const featuresSectionStyle = useMemo(() => [
+    styles.featuresSection,
+    { borderColor: theme.colors.border }
+  ], [theme.colors.border]);
+
+  const featureTextStyle = useMemo(() => [
+    styles.featureText,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const primaryButtonStyle = useMemo(() => [
+    styles.primaryButton,
+    { backgroundColor: theme.colors.primaryButton }
+  ], [theme.colors.primaryButton]);
+
+  const secondaryButtonStyle = useMemo(() => [
+    styles.secondaryButton,
+    { borderColor: theme.colors.border }
+  ], [theme.colors.border]);
+
+  const secondaryButtonTextStyle = useMemo(() => [
+    styles.secondaryButtonText,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const footerTextStyle = useMemo(() => [
+    styles.footerText,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  // Memoized features data
+  const features = useMemo(() => [
+    { icon: '📰', text: 'Curated AI News' },
+    { icon: '💾', text: 'Save & Organize' },
+    { icon: '🌙', text: 'Dark Mode' }
+  ], []);
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={containerStyle}>
       <StatusBar style={theme.isDark ? "light" : "dark"} />
       
-      {/* Hero Section */}
       <View style={styles.heroSection}>
         <View style={styles.logoContainer}>
           <Text style={styles.logoIcon}>🤖</Text>
-          <Text style={[styles.logoText, { color: theme.colors.primaryText }]}>
+          <Text style={logoTextStyle}>
             AI ShortCut
           </Text>
         </View>
         
-        <Text style={[styles.tagline, { color: theme.colors.secondaryText }]}>
+        <Text style={taglineStyle}>
           Your Daily AI News Summary
         </Text>
         
-        <Text style={[styles.description, { color: theme.colors.secondaryText }]}>
+        <Text style={descriptionStyle}>
           Stay ahead of the AI revolution with curated news, insights, and breakthroughs delivered daily.
         </Text>
       </View>
 
-      {/* Features Section */}
-      <View style={styles.featuresSection}>
-        <View style={styles.featureItem}>
-          <Text style={styles.featureIcon}>📰</Text>
-          <Text style={[styles.featureText, { color: theme.colors.primaryText }]}>
-            Curated AI News
-          </Text>
-        </View>
-        
-        <View style={styles.featureItem}>
-          <Text style={styles.featureIcon}>💾</Text>
-          <Text style={[styles.featureText, { color: theme.colors.primaryText }]}>
-            Save & Organize
-          </Text>
-        </View>
-        
-        <View style={styles.featureItem}>
-          <Text style={styles.featureIcon}>🌙</Text>
-          <Text style={[styles.featureText, { color: theme.colors.primaryText }]}>
-            Dark Mode
-          </Text>
-        </View>
+      <View style={featuresSectionStyle}>
+        {features.map((feature, index) => (
+          <View key={index} style={styles.featureItem}>
+            <Text style={styles.featureIcon}>{feature.icon}</Text>
+            <Text style={featureTextStyle}>
+              {feature.text}
+            </Text>
+          </View>
+        ))}
       </View>
 
-      {/* Action Buttons */}
       <View style={styles.actionSection}>
         <TouchableOpacity 
-          style={[styles.primaryButton, { backgroundColor: theme.colors.primaryButton }]}
-          onPress={onNavigateToSignup}
+          style={primaryButtonStyle}
+          onPress={handleNavigateToSignup}
+          activeOpacity={0.8}
         >
           <Text style={styles.primaryButtonText}>Get Started</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={[styles.secondaryButton, { borderColor: theme.colors.border }]}
-          onPress={onNavigateToLogin}
+          style={secondaryButtonStyle}
+          onPress={handleNavigateToLogin}
+          activeOpacity={0.8}
         >
-          <Text style={[styles.secondaryButtonText, { color: theme.colors.primaryText }]}>
+          <Text style={secondaryButtonTextStyle}>
             I Already Have an Account
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Footer */}
       <View style={styles.footer}>
-        <Text style={[styles.footerText, { color: theme.colors.secondaryText }]}>
+        <Text style={footerTextStyle}>
           Join thousands of AI enthusiasts
         </Text>
       </View>
     </View>
   );
-};
+});
+
+WelcomeScreen.displayName = 'WelcomeScreen';
 
 const styles = StyleSheet.create({
   container: {
@@ -133,7 +184,6 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: 'rgba(107, 114, 128, 0.2)',
   },
   featureItem: {
     alignItems: 'center',
@@ -145,6 +195,7 @@ const styles = StyleSheet.create({
   featureText: {
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
   },
   actionSection: {
     paddingVertical: 40,

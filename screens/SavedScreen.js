@@ -1,51 +1,42 @@
-// screens/SavedScreen.js (Complete Article Detail Navigation)
-import React, { useState, useEffect, useCallback  } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl  } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import Header from '../components/Header';
 import BottomMenu from '../components/BottomMenu';
 import NewsCard from '../components/NewsCard';
 import { useTheme } from '../App';
-import { subscribeToArticles, getUserInteractions } from '../firebase/firebaseService'; // Make sure these are exported
+import { subscribeToArticles, getUserInteractions, updateUserInteraction } from '../firebase/firebaseService';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase/firebaseConfig'; // Adjust path if needed
-import { updateUserInteraction } from '../firebase/firebaseService'; // Add this import
+import { db } from '../firebase/firebaseConfig';
 
-const SavedScreen = ({ onNavigate, onArticleDetail, currentUser, onLogout }) => {
+const SavedScreen = React.memo(({ onNavigate, onArticleDetail, currentUser, onLogout }) => {
   const theme = useTheme();
-
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [likedArticles, setLikedArticles] = useState({});
   const [savedArticlesList, setSavedArticlesList] = useState({});
 
-useEffect(() => {
-  const loadSavedArticles = async () => {
+  // Memoized load saved articles function
+  const loadSavedArticles = useCallback(async () => {
+    if (!currentUser) return;
+    
     setLoading(true);
     try {
-      // Fetch all articles and user interactions
       const [allArticles, userInteractions] = await Promise.all([
         subscribeToArticles(),
         getUserInteractions(currentUser.uid)
       ]);
 
-      // REMOVED OLD NORMALIZATION - subscribeToArticles now handles this properly
-      console.log('✅ Loaded articles:', allArticles?.length || 0);
-      console.log('✅ User interactions:', userInteractions);
-
-      // Ensure we have valid arrays
       const articles = Array.isArray(allArticles) ? allArticles : [];
       const savedIds = Array.isArray(userInteractions?.savedArticles) ? userInteractions.savedArticles : [];
       const likedIds = Array.isArray(userInteractions?.likedArticles) ? userInteractions.likedArticles : [];
 
-      // Filter saved articles
       const savedArticles = articles.filter(article => 
         article && article.id && savedIds.includes(article.id)
       );
       
-      console.log('✅ Filtered saved articles:', savedArticles.length);
       setArticles(savedArticles);
 
-      // Set saved/liked status for UI
       const savedMap = {};
       savedIds.forEach(id => { savedMap[id] = true; });
       setSavedArticlesList(savedMap);
@@ -55,188 +46,238 @@ useEffect(() => {
       setLikedArticles(likedMap);
 
     } catch (error) {
-      console.error('❌ Error loading saved articles:', error);
-      // Set safe defaults on error
+      if (__DEV__) {
+        console.error('Error loading saved articles:', error);
+      }
       setArticles([]);
       setSavedArticlesList({});
       setLikedArticles({});
+      Alert.alert('Error', 'Failed to load saved articles. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
 
-  if (currentUser) {
-    loadSavedArticles();
-  }
-}, [currentUser]);
+  // Load saved articles when user changes
+  useEffect(() => {
+    if (currentUser) {
+      loadSavedArticles();
+    }
+  }, [currentUser, loadSavedArticles]);
 
-// Add this state with your existing useState hooks
-const [refreshing, setRefreshing] = useState(false);
-
-// Add this refresh function
-const onRefresh = useCallback(async () => {
-  setRefreshing(true);
-  try {
-    // Reload saved articles
-    const [allArticles, userInteractions] = await Promise.all([
-      subscribeToArticles(),
-      getUserInteractions(currentUser.uid)
-    ]);
-
-    const articles = Array.isArray(allArticles) ? allArticles : [];
-    const savedIds = Array.isArray(userInteractions?.savedArticles) ? userInteractions.savedArticles : [];
-    const likedIds = Array.isArray(userInteractions?.likedArticles) ? userInteractions.likedArticles : [];
-
-    const savedArticles = articles.filter(article => 
-      article && article.id && savedIds.includes(article.id)
-    );
+  // Memoized refresh function
+  const onRefresh = useCallback(async () => {
+    if (!currentUser) return;
     
-    setArticles(savedArticles);
+    setRefreshing(true);
+    try {
+      const [allArticles, userInteractions] = await Promise.all([
+        subscribeToArticles(),
+        getUserInteractions(currentUser.uid)
+      ]);
 
-    // Update UI states
-    const savedMap = {};
-    savedIds.forEach(id => { savedMap[id] = true; });
-    setSavedArticlesList(savedMap);
+      const articles = Array.isArray(allArticles) ? allArticles : [];
+      const savedIds = Array.isArray(userInteractions?.savedArticles) ? userInteractions.savedArticles : [];
+      const likedIds = Array.isArray(userInteractions?.likedArticles) ? userInteractions.likedArticles : [];
 
-    const likedMap = {};
-    likedIds.forEach(id => { likedMap[id] = true; });
-    setLikedArticles(likedMap);
+      const savedArticles = articles.filter(article => 
+        article && article.id && savedIds.includes(article.id)
+      );
+      
+      setArticles(savedArticles);
 
-  } catch (error) {
-    console.error('Error refreshing saved articles:', error);
-  } finally {
-    setRefreshing(false);
-  }
-}, [currentUser]);
+      const savedMap = {};
+      savedIds.forEach(id => { savedMap[id] = true; });
+      setSavedArticlesList(savedMap);
 
+      const likedMap = {};
+      likedIds.forEach(id => { likedMap[id] = true; });
+      setLikedArticles(likedMap);
 
-const handleLike = async (articleId) => {
-  const isLiked = !likedArticles[articleId];
-  setLikedArticles(prev => ({
-    ...prev,
-    [articleId]: isLiked
-  }));
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error refreshing saved articles:', error);
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }, [currentUser]);
 
-  // Update Firestore
-  try {
-    await updateUserInteraction(currentUser.uid, articleId, 'like', isLiked);
-  } catch (error) {
-    console.error('Error updating like status in Firestore:', error);
-  }
+  // Memoized like handler
+  const handleLike = useCallback(async (articleId) => {
+    const isLiked = !likedArticles[articleId];
+    setLikedArticles(prev => ({
+      ...prev,
+      [articleId]: isLiked
+    }));
 
-  // Alert.alert(
-  //   isLiked ? "❤️ Liked!" : "💔 Unliked",
-  //   isLiked ? "Added to your liked articles" : "Removed from liked articles"
-  // );
-};
+    try {
+      await updateUserInteraction(currentUser.uid, articleId, 'like', isLiked);
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error updating like status:', error);
+      }
+      // Revert on error
+      setLikedArticles(prev => ({
+        ...prev,
+        [articleId]: !isLiked
+      }));
+    }
+  }, [likedArticles, currentUser]);
 
-const handleUnsave = async (articleId) => {
-  setSavedArticlesList(prev => ({
-    ...prev,
-    [articleId]: false
-  }));
+  // Memoized unsave handler
+  const handleUnsave = useCallback(async (articleId) => {
+    setSavedArticlesList(prev => ({
+      ...prev,
+      [articleId]: false
+    }));
 
-  // Update Firestore: remove article from savedArticles
-  try {
-    await updateUserInteraction(currentUser.uid, articleId, 'save', false);
-  } catch (error) {
-    console.error('Error updating saved status in Firestore:', error);
-  }
+    try {
+      await updateUserInteraction(currentUser.uid, articleId, 'save', false);
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error updating saved status:', error);
+      }
+      // Revert on error
+      setSavedArticlesList(prev => ({
+        ...prev,
+        [articleId]: true
+      }));
+    }
+  }, [currentUser]);
 
-  // Alert.alert(
-  //   "🗑️ Removed from Saved",
-  //   "Article removed from your saved list",
-  //   [
-  //     { text: "Undo", onPress: async () => {
-  //       setSavedArticlesList(prev => ({ ...prev, [articleId]: true }));
-  //       // Update Firestore: add article back to savedArticles
-  //       try {
-  //         await updateUserInteraction(currentUser.uid, articleId, 'save', true);
-  //       } catch (error) {
-  //         console.error('Error restoring saved status in Firestore:', error);
-  //       }
-  //     }},
-  //     { text: "OK", style: "default" }
-  //   ]
-  // );
-};
-// 
-// Sharing: "${article.headline}"\n\nThis will open your device's share menu with the article link.
-  const handleShare = (article) => {
+  // Memoized share handler
+  const handleShare = useCallback(() => {
     Alert.alert(
-      "📤 Share Saved Article",
-      `!!Featue comin soon!!`,
+      "📤 Share Article",
+      "Feature coming soon!",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Back", onPress: () => console.log("Sharing saved article:", article.headline) }
+        { text: "OK", style: "default" }
       ]
     );
-  };
+  }, []);
 
-  // FIXED: Navigate to article detail for saved articles
-  const handleReadMore = (article) => {
-    console.log("SavedScreen: Attempting to open article detail for:", article.headline);
-    
+  // Memoized read more handler
+  const handleReadMore = useCallback((article) => {
     if (onArticleDetail) {
-      console.log("SavedScreen: onArticleDetail function exists, calling it");
       onArticleDetail(article);
     } else {
-      console.log("SavedScreen: onArticleDetail function is undefined!");
       Alert.alert(
         "Error", 
         "Article detail navigation not available. Please check the app configuration."
       );
     }
-  };
+  }, [onArticleDetail]);
 
-  const clearAllSaved = () => {
-  Alert.alert(
-    "🗑️ Clear All Saved",
-    "Are you sure you want to remove all saved articles?",
-    [
-      { text: "Cancel", style: "cancel" },
-      { 
-        text: "Clear All", 
-        style: "destructive",
-        onPress: async () => {
-          setSavedArticlesList({});
-          // Remove all saved articles in Firestore
-          try {
-            const userRef = doc(db, 'users', currentUser.uid);
-            await updateDoc(userRef, { savedArticles: [] });
-          } catch (error) {
-            console.error('Error clearing saved articles in Firestore:', error);
+  // Memoized clear all saved handler
+  const clearAllSaved = useCallback(() => {
+    Alert.alert(
+      "🗑️ Clear All Saved",
+      "Are you sure you want to remove all saved articles?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Clear All", 
+          style: "destructive",
+          onPress: async () => {
+            setSavedArticlesList({});
+            try {
+              const userRef = doc(db, 'users', currentUser.uid);
+              await updateDoc(userRef, { savedArticles: [] });
+            } catch (error) {
+              if (__DEV__) {
+                console.error('Error clearing saved articles:', error);
+              }
+              Alert.alert('Error', 'Failed to clear saved articles. Please try again.');
+            }
           }
         }
-      }
-    ]
-  );
-};
+      ]
+    );
+  }, [currentUser]);
 
-  // Filter articles that are still saved
-// Filter articles that are still saved - WITH SAFE ARRAY HANDLING
-const currentSavedArticles = Array.isArray(articles) ? 
-  articles.filter(article => article && savedArticlesList[article.id]) : [];
+  // Memoized browse articles handler
+  const handleBrowseArticles = useCallback(() => {
+    onNavigate('Home');
+  }, [onNavigate]);
 
+  // Memoized filtered articles
+  const currentSavedArticles = useMemo(() => {
+    return Array.isArray(articles) ? 
+      articles.filter(article => article && savedArticlesList[article.id]) : [];
+  }, [articles, savedArticlesList]);
+
+  // Memoized dynamic styles
+  const containerStyle = useMemo(() => [
+    styles.container,
+    { backgroundColor: theme.colors.background }
+  ], [theme.colors.background]);
+
+  const headerActionsStyle = useMemo(() => [
+    styles.headerActions,
+    { backgroundColor: theme.colors.cardBackground }
+  ], [theme.colors.cardBackground]);
+
+  const savedCountStyle = useMemo(() => [
+    styles.savedCount,
+    { color: theme.colors.accentText }
+  ], [theme.colors.accentText]);
+
+  const clearButtonStyle = useMemo(() => [
+    styles.clearButton,
+    { backgroundColor: theme.colors.likedBackground }
+  ], [theme.colors.likedBackground]);
+
+  const clearButtonTextStyle = useMemo(() => [
+    styles.clearButtonText,
+    { color: theme.colors.liked }
+  ], [theme.colors.liked]);
+
+  const emptyTitleStyle = useMemo(() => [
+    styles.emptyTitle,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const emptySubtitleStyle = useMemo(() => [
+    styles.emptySubtitle,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const browseButtonStyle = useMemo(() => [
+    styles.browseButton,
+    { backgroundColor: theme.colors.primaryButton }
+  ], [theme.colors.primaryButton]);
+
+  // Memoized refresh control
+  const refreshControl = useMemo(() => (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      tintColor={theme.colors.primaryButton}
+      colors={[theme.colors.primaryButton]}
+    />
+  ), [refreshing, onRefresh, theme.colors.primaryButton]);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={containerStyle}>
       <Header 
-      currentScreen="Saved"
-      currentUser={currentUser}
+        currentScreen="Saved"
+        currentUser={currentUser}
         onLogout={onLogout}
-         />
+      />
       
-      <View style={[styles.headerActions, { backgroundColor: theme.colors.cardBackground }]}>
-        <Text style={[styles.savedCount, { color: theme.colors.accentText }]}>
+      <View style={headerActionsStyle}>
+        <Text style={savedCountStyle}>
           💾 {currentSavedArticles.length} Saved Articles
         </Text>
         {currentSavedArticles.length > 0 && (
           <TouchableOpacity 
             onPress={clearAllSaved} 
-            style={[styles.clearButton, { backgroundColor: theme.colors.likedBackground }]}
+            style={clearButtonStyle}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.clearButtonText, { color: theme.colors.liked }]}>Clear All</Text>
+            <Text style={clearButtonTextStyle}>Clear All</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -245,53 +286,47 @@ const currentSavedArticles = Array.isArray(articles) ?
         style={styles.content} 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-    <RefreshControl
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-      tintColor={theme.colors.primaryButton} // iOS
-      colors={[theme.colors.primaryButton]} // Android
-    />
-  }
+        refreshControl={refreshControl}
       >
-           {loading ? (
-  <View style={styles.emptyState}>
-    <Text style={styles.emptyIcon}>⏳</Text>
-    <Text style={[styles.emptyTitle, { color: theme.colors.primaryText }]}>Loading...</Text>
-  </View>
-) : currentSavedArticles.length > 0 ? (
-  <>
-    {currentSavedArticles.map(article => {
-      // Add safety check for each article
-      if (!article || !article.id) {
-        console.warn('⚠️ Invalid article data:', article);
-        return null;
-      }
-      
-      return (
-        <NewsCard
-          key={article.id}
-          article={article}
-          isLiked={likedArticles[article.id] || false}
-          isSaved={savedArticlesList[article.id] || false}
-          onLike={handleLike}
-          onSave={handleUnsave}
-          onShare={handleShare}
-          onReadMore={handleReadMore}
-        />
-      );
-    })}
-  </>
+        {loading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>⏳</Text>
+            <Text style={emptyTitleStyle}>Loading...</Text>
+            <Text style={emptySubtitleStyle}>Fetching your saved articles</Text>
+          </View>
+        ) : currentSavedArticles.length > 0 ? (
+          currentSavedArticles.map(article => {
+            if (!article || !article.id) {
+              if (__DEV__) {
+                console.warn('Invalid article data:', article);
+              }
+              return null;
+            }
+            
+            return (
+              <NewsCard
+                key={article.id}
+                article={article}
+                isLiked={likedArticles[article.id] || false}
+                isSaved={savedArticlesList[article.id] || false}
+                onLike={handleLike}
+                onSave={handleUnsave}
+                onShare={handleShare}
+                onReadMore={handleReadMore}
+              />
+            );
+          })
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📂</Text>
-            <Text style={[styles.emptyTitle, { color: theme.colors.primaryText }]}>No Saved Articles</Text>
-            <Text style={[styles.emptySubtitle, { color: theme.colors.secondaryText }]}>
+            <Text style={emptyTitleStyle}>No Saved Articles</Text>
+            <Text style={emptySubtitleStyle}>
               Articles you save will appear here for easy access later
             </Text>
             <TouchableOpacity 
-              style={[styles.browseButton, { backgroundColor: theme.colors.primaryButton }]}
-              onPress={() => onNavigate('Home')}
+              style={browseButtonStyle}
+              onPress={handleBrowseArticles}
+              activeOpacity={0.8}
             >
               <Text style={styles.browseButtonText}>Browse AI News →</Text>
             </TouchableOpacity>
@@ -305,7 +340,9 @@ const currentSavedArticles = Array.isArray(articles) ?
       />
     </View>
   );
-};
+});
+
+SavedScreen.displayName = 'SavedScreen';
 
 const styles = StyleSheet.create({
   container: {
@@ -346,6 +383,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingTop: 20,
     paddingBottom: 20,
+    flexGrow: 1,
   },
   emptyState: {
     flex: 1,

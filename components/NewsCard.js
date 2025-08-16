@@ -1,9 +1,8 @@
-// components/NewsCard.js (Dark Mode Support)
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '../App';
 
-const NewsCard = ({ 
+const NewsCard = React.memo(({ 
   article, 
   isLiked, 
   isSaved, 
@@ -14,115 +13,166 @@ const NewsCard = ({
 }) => {
   const theme = useTheme();
 
+  // Memoized event handlers
+  const handleReadMore = useCallback(() => {
+    onReadMore(article);
+  }, [onReadMore, article]);
+
+  const handleLike = useCallback(() => {
+    onLike(article.id);
+  }, [onLike, article.id]);
+
+  const handleSave = useCallback(() => {
+    onSave(article.id);
+  }, [onSave, article.id]);
+
+  const handleShare = useCallback(() => {
+    onShare(article);
+  }, [onShare, article]);
+
+  // Memoized dynamic styles
+  const newsCardStyle = useMemo(() => [
+    styles.newsCard,
+    {
+      backgroundColor: theme.colors.cardBackground,
+      shadowColor: theme.isDark ? '#000' : '#000',
+    }
+  ], [theme.colors.cardBackground, theme.isDark]);
+
+  const headlineStyle = useMemo(() => [
+    styles.cardHeadline,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const authorStyle = useMemo(() => [
+    styles.author,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const readTimeStyle = useMemo(() => [
+    styles.readTime,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const publishDateStyle = useMemo(() => [
+    styles.publishDate,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  // Memoized action button styles
+  const likeButtonStyle = useMemo(() => [
+    styles.smallActionButton,
+    { backgroundColor: theme.colors.buttonBackground },
+    isLiked && { backgroundColor: theme.colors.likedBackground }
+  ], [theme.colors.buttonBackground, theme.colors.likedBackground, isLiked]);
+
+  const saveButtonStyle = useMemo(() => [
+    styles.smallActionButton,
+    { backgroundColor: theme.colors.buttonBackground },
+    isSaved && { backgroundColor: theme.colors.savedBackground }
+  ], [theme.colors.buttonBackground, theme.colors.savedBackground, isSaved]);
+
+  const shareButtonStyle = useMemo(() => [
+    styles.smallActionButton,
+    { backgroundColor: theme.colors.buttonBackground }
+  ], [theme.colors.buttonBackground]);
+
+  const likeTextStyle = useMemo(() => [
+    styles.smallActionText,
+    { color: theme.colors.buttonText },
+    isLiked && { color: theme.colors.liked }
+  ], [theme.colors.buttonText, theme.colors.liked, isLiked]);
+
+  const saveTextStyle = useMemo(() => [
+    styles.smallActionText,
+    { color: theme.colors.buttonText },
+    isSaved && { color: theme.colors.saved }
+  ], [theme.colors.buttonText, theme.colors.saved, isSaved]);
+
+  const shareTextStyle = useMemo(() => [
+    styles.smallActionText,
+    { color: theme.colors.buttonText }
+  ], [theme.colors.buttonText]);
+
+  const readMoreButtonStyle = useMemo(() => [
+    styles.readMoreButton,
+    { backgroundColor: theme.colors.primaryButton }
+  ], [theme.colors.primaryButton]);
+
   return (
     <TouchableOpacity 
-      style={[styles.newsCard, { 
-        backgroundColor: theme.colors.cardBackground,
-        shadowColor: theme.isDark ? '#000' : '#000',
-      }]} 
-      onPress={() => onReadMore(article)}
+      style={newsCardStyle}
+      onPress={handleReadMore}
       activeOpacity={1}
     >
-      <Image source={{ uri: article.imageUrl }} style={styles.cardImage} />
+      <Image 
+        source={{ uri: article.imageUrl }} 
+        style={styles.cardImage}
+        resizeMode="cover"
+      />
       
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardHeadline, { color: theme.colors.primaryText }]}>
+          <Text style={headlineStyle} numberOfLines={2}>
             {article.headline}
           </Text>
           <View style={styles.metaInfo}>
-            <Text style={[styles.author, { color: theme.colors.secondaryText }]}>
+            <Text style={authorStyle}>
               {article.author}
             </Text>
-            <Text style={[styles.readTime, { color: theme.colors.secondaryText }]}>
-              • {article.readTime}
+            <Text style={readTimeStyle}>
+              • {article.readTime} min read
             </Text>
-            <Text style={[styles.publishDate, { color: theme.colors.secondaryText }]}>
+            <Text style={publishDateStyle}>
               • {article.publishDate}
             </Text>
           </View>
         </View>
         
-        {/* <Text 
-          style={[styles.cardSummary, { color: theme.colors.secondaryText }]} 
-          numberOfLines={3}
-        >
-          {article.summary}
-        </Text> */}
-        
-        {/* <View style={styles.topicsContainer}>
-          {article.topics.map((topic, index) => (
-            <View 
-              key={index} 
-              style={[styles.topicTag, { 
-                backgroundColor: theme.isDark ? '#1e40af' : '#dbeafe' 
-              }]}
-            >
-              <Text style={[styles.topicText, { 
-                color: theme.isDark ? '#bfdbfe' : '#2563eb' 
-              }]}>
-                {topic}
-              </Text>
-            </View>
-          ))}
-        </View> */}
-        
         <View style={styles.cardActions}>
           <View style={styles.smallButtonsRow}>
             <TouchableOpacity 
-              style={[
-                styles.smallActionButton, 
-                { backgroundColor: theme.colors.buttonBackground },
-                isLiked && { backgroundColor: theme.colors.likedBackground }
-              ]} 
-              onPress={() => onLike(article.id)}
+              style={likeButtonStyle}
+              onPress={handleLike}
+              activeOpacity={0.7}
             >
               <Text style={styles.actionIcon}>
                 {isLiked ? '❤️' : '🤍'}
               </Text>
-              <Text style={[
-                styles.smallActionText, 
-                { color: theme.colors.buttonText },
-                isLiked && { color: theme.colors.liked }
-              ]}>
+              <Text style={likeTextStyle}>
                 {isLiked ? 'Liked' : 'Like'}
               </Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[
-                styles.smallActionButton, 
-                { backgroundColor: theme.colors.buttonBackground },
-                isSaved && { backgroundColor: theme.colors.savedBackground }
-              ]} 
-              onPress={() => onSave(article.id)}
+              style={saveButtonStyle}
+              onPress={handleSave}
+              activeOpacity={0.7}
             >
               <Text style={styles.actionIcon}>
                 {isSaved ? '💾' : '🔖'}
               </Text>
-              <Text style={[
-                styles.smallActionText, 
-                { color: theme.colors.buttonText },
-                isSaved && { color: theme.colors.saved }
-              ]}>
+              <Text style={saveTextStyle}>
                 {isSaved ? 'Saved' : 'Save'}
               </Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.smallActionButton, { backgroundColor: theme.colors.buttonBackground }]} 
-              onPress={() => onShare(article)}
+              style={shareButtonStyle}
+              onPress={handleShare}
+              activeOpacity={0.7}
             >
               <Text style={styles.actionIcon}>📤</Text>
-              <Text style={[styles.smallActionText, { color: theme.colors.buttonText }]}>
+              <Text style={shareTextStyle}>
                 Share
               </Text>
             </TouchableOpacity>
           </View>
           
           <TouchableOpacity 
-            style={[styles.readMoreButton, { backgroundColor: theme.colors.primaryButton }]} 
-            onPress={() => onReadMore(article)}
+            style={readMoreButtonStyle}
+            onPress={handleReadMore}
+            activeOpacity={0.8}
           >
             <Text style={styles.readMoreText}>Get ShortCut →</Text>
           </TouchableOpacity>
@@ -130,9 +180,10 @@ const NewsCard = ({
       </View>
     </TouchableOpacity>
   );
-};
+});
 
-// Keep all the same styles from before
+NewsCard.displayName = 'NewsCard';
+
 const styles = StyleSheet.create({
   newsCard: {
     borderRadius: 16,
@@ -174,27 +225,6 @@ const styles = StyleSheet.create({
   },
   publishDate: {
     fontSize: 12,
-  },
-  cardSummary: {
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 15,
-  },
-  topicsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 20,
-  },
-  topicTag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  topicText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   cardActions: {
     gap: 12,

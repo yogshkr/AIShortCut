@@ -1,13 +1,12 @@
-// screens/ProfileScreen.js (Updated with Firebase Stats)
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import Header from '../components/Header';
 import BottomMenu from '../components/BottomMenu';
 import { useTheme } from '../App';
 
-const ProfileScreen = ({ onNavigate, currentUser, onLogout }) => {
+const ProfileScreen = React.memo(({ onNavigate, currentUser, onLogout }) => {
   const theme = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [userStats, setUserStats] = useState({
@@ -15,57 +14,102 @@ const ProfileScreen = ({ onNavigate, currentUser, onLogout }) => {
     articlesLiked: 0,
     articlesSaved: 0
   });
+  const [statsLoading, setStatsLoading] = useState(true);
 
-  // Fetch real user statistics from Firebase
-  useEffect(() => {
-    const fetchUserStats = async () => {
-      if (currentUser) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setUserStats({
-              articlesRead: userData.stats?.articlesRead || 0,
-              articlesLiked: userData.likedArticles?.length || 0,
-              articlesSaved: userData.savedArticles?.length || 0
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching user stats:', error);
-        }
-      }
-    };
-
-    fetchUserStats();
-  }, [currentUser]);
-
-  const handleSettingToggle = (setting, value) => {
-    if (setting === 'notifications') {
-      setNotificationsEnabled(value);
-      Alert.alert("🔔 Notifications", value ? "Notifications enabled" : "Notifications disabled");
+  // Memoized fetch user stats function
+ // Memoized fetch user stats function
+const fetchUserStats = useCallback(async () => {
+  if (!currentUser) return;
+  
+  try {
+    setStatsLoading(true);
+    
+    // Fetch user data and total articles count in parallel
+    const [userDocResult, articlesSnapshot] = await Promise.all([
+      getDoc(doc(db, 'users', currentUser.uid)),
+      getDocs(collection(db, 'articles'))  // Add this import
+    ]);
+    
+    const totalArticlesAvailable = articlesSnapshot.size;
+    
+    if (userDocResult.exists()) {
+      const userData = userDocResult.data();
+      const userArticlesRead = userData.stats?.articlesRead || 0;
+      
+      setUserStats({
+        articlesRead: Math.min(userArticlesRead, totalArticlesAvailable), // Cap at total available
+        articlesLiked: Math.min(userData.likedArticles?.length || 0, totalArticlesAvailable),
+        articlesSaved: Math.min(userData.savedArticles?.length || 0, totalArticlesAvailable)
+      });
+    } else {
+      // If user document doesn't exist, set all stats to 0
+      setUserStats({
+        articlesRead: 0,
+        articlesLiked: 0,
+        articlesSaved: 0
+      });
     }
-  };
+  } catch (error) {
+    if (__DEV__) {
+      console.error('Error fetching user stats:', error);
+    }
+  } finally {
+    setStatsLoading(false);
+  }
+}, [currentUser]);
 
-  const handleAction = (action) => {
+
+  // Fetch user stats on mount and user change
+  useEffect(() => {
+    fetchUserStats();
+  }, [fetchUserStats]);
+
+  // Memoized setting toggle handler
+  // const handleSettingToggle = useCallback((setting, value) => {
+  //   if (setting === 'notifications') {
+  //     setNotificationsEnabled(value);
+  //     Alert.alert(
+  //       "🔔 Notifications", 
+  //       value ? "Notifications enabled" : "Notifications disabled"
+  //     );
+  //   }
+  // }, []);
+
+  // Memoized action handler
+  const handleAction = useCallback((action) => {
     switch(action) {
       case 'preferences':
-        Alert.alert("⚙️ Preferences", "AI news topic preferences coming soon!");
+        Alert.alert(
+          "⚙️ Preferences", 
+          "AI news topic preferences coming soon!"
+        );
         break;
       case 'about':
-        Alert.alert("ℹ️ About AI ShortCut", "Version 1.0.0\nYour daily AI news companion\nBuilt with React Native & Expo");
+        Alert.alert(
+  "ℹ️ About AI ShortCut", 
+  "Version 1.0.0 - Just Launched! 🎉\n\n🤖 Your personalized AI news companion that delivers the latest AI trends, breakthroughs, and insights in bite-sized summaries.\n\n📱 We're updating this app daily with new features and improvements because we're passionate about bringing you the best AI news experience.\n\n🚀 This is just the beginning! As a newly launched app, your support means everything to us. Please keep the app and help us grow by sharing it with fellow AI enthusiasts.\n\n💡 Have suggestions? We're listening and building this app for YOU!\n\nThank you for being an early supporter!🙏\n\nContact Python.Hub on Instagram"
+);
+
         break;
       case 'feedback':
-        Alert.alert("💬 Feedback", "We'd love to hear from you!\nFeedback system coming soon.");
+        Alert.alert(
+          "💬 Feedback", 
+          "We'd love to hear from you!\nPlease contact Python.Hub on Instagram."
+        );
         break;
       case 'share':
-        Alert.alert("📤 Share App", "Sharing AI ShortCut with friends!\nShare functionality coming soon.");
+        Alert.alert(
+          "📤 Share App", 
+          "Sharing AI ShortCut with friends!\nShare functionality coming soon."
+        );
         break;
       default:
         break;
     }
-  };
+  }, []);
 
-  const handleLogoutPress = () => {
+  // Memoized logout handler
+  const handleLogoutPress = useCallback(() => {
     Alert.alert(
       "🚪 Sign Out",
       `Are you sure you want to sign out of AI ShortCut?\n\nYou'll need to log in again to access your personalized content.`,
@@ -81,148 +125,274 @@ const ProfileScreen = ({ onNavigate, currentUser, onLogout }) => {
         }
       ]
     );
-  };
+  }, [onLogout]);
+
+  // Memoized dark mode toggle handler
+  const handleDarkModeToggle = useCallback(() => {
+    theme.toggleDarkMode();
+  }, [theme.toggleDarkMode]);
+
+  // Memoized notification toggle handler
+  const handleNotificationToggle = useCallback(() => {
+    Alert.alert(
+    "🔔 Notifications",
+    "Push notifications feature coming soon in the next update!",
+    [{ text: "OK", style: "default" }]
+  );
+}, []);
+
+  // Memoized dynamic styles
+  const containerStyle = useMemo(() => [
+    styles.container,
+    { backgroundColor: theme.colors.background }
+  ], [theme.colors.background]);
+
+  const profileSectionStyle = useMemo(() => [
+    styles.profileSection,
+    { backgroundColor: theme.colors.cardBackground }
+  ], [theme.colors.cardBackground]);
+
+  const avatarContainerStyle = useMemo(() => [
+    styles.avatarContainer,
+    { backgroundColor: theme.colors.primaryButton }
+  ], [theme.colors.primaryButton]);
+
+  const userNameStyle = useMemo(() => [
+    styles.userName,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const userEmailStyle = useMemo(() => [
+    styles.userEmail,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const statsSectionStyle = useMemo(() => [
+    styles.statsSection,
+    { backgroundColor: theme.colors.cardBackground }
+  ], [theme.colors.cardBackground]);
+
+  const statNumberStyle = useMemo(() => [
+    styles.statNumber,
+    { color: theme.colors.accentText }
+  ], [theme.colors.accentText]);
+
+  const statLabelStyle = useMemo(() => [
+    styles.statLabel,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const settingsSectionStyle = useMemo(() => [
+    styles.settingsSection,
+    { backgroundColor: theme.colors.cardBackground }
+  ], [theme.colors.cardBackground]);
+
+  const actionsSectionStyle = useMemo(() => [
+    styles.actionsSection,
+    { backgroundColor: theme.colors.cardBackground }
+  ], [theme.colors.cardBackground]);
+
+  const accountSectionStyle = useMemo(() => [
+    styles.accountSection,
+    { backgroundColor: theme.colors.cardBackground }
+  ], [theme.colors.cardBackground]);
+
+  const sectionTitleStyle = useMemo(() => [
+    styles.sectionTitle,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const settingItemStyle = useMemo(() => [
+    styles.settingItem,
+    { borderBottomColor: theme.colors.separator }
+  ], [theme.colors.separator]);
+
+  const settingTextStyle = useMemo(() => [
+    styles.settingText,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const actionItemStyle = useMemo(() => [
+    styles.actionItem,
+    { borderBottomColor: theme.colors.separator }
+  ], [theme.colors.separator]);
+
+  const actionTextStyle = useMemo(() => [
+    styles.actionText,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const arrowStyle = useMemo(() => [
+    styles.arrow,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  // Memoized toggle styles
+  const notificationToggleStyle = useMemo(() => [
+    styles.toggle,
+    { backgroundColor: theme.colors.buttonBackground },
+    notificationsEnabled && { backgroundColor: theme.colors.primaryButton }
+  ], [theme.colors.buttonBackground, theme.colors.primaryButton, notificationsEnabled]);
+
+  const notificationToggleTextStyle = useMemo(() => [
+    styles.toggleText,
+    { color: theme.colors.buttonText },
+    notificationsEnabled && { color: '#ffffff' }
+  ], [theme.colors.buttonText, notificationsEnabled]);
+
+  const darkModeToggleStyle = useMemo(() => [
+    styles.toggle,
+    { backgroundColor: theme.colors.buttonBackground },
+    theme.isDark && { backgroundColor: theme.colors.primaryButton }
+  ], [theme.colors.buttonBackground, theme.colors.primaryButton, theme.isDark]);
+
+  const darkModeToggleTextStyle = useMemo(() => [
+    styles.toggleText,
+    { color: theme.colors.buttonText },
+    theme.isDark && { color: '#ffffff' }
+  ], [theme.colors.buttonText, theme.isDark]);
+
+  const logoutItemStyle = useMemo(() => [
+    styles.logoutItem,
+    {
+      backgroundColor: theme.isDark ? '#450a0a' : '#fef2f2',
+      borderColor: theme.isDark ? '#dc2626' : '#fecaca'
+    }
+  ], [theme.isDark]);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={containerStyle}>
       <Header currentScreen="Profile" />
       
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* User Profile Section */}
-        <View style={[styles.profileSection, { backgroundColor: theme.colors.cardBackground }]}>
-          <View style={[styles.avatarContainer, { backgroundColor: theme.colors.primaryButton }]}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={profileSectionStyle}>
+          <View style={avatarContainerStyle}>
             <Text style={styles.avatarEmoji}>👤</Text>
           </View>
-          <Text style={[styles.userName, { color: theme.colors.primaryText }]}>
+          <Text style={userNameStyle}>
             {currentUser?.name || 'AI News Reader'}
           </Text>
-          <Text style={[styles.userEmail, { color: theme.colors.secondaryText }]}>
+          <Text style={userEmailStyle}>
             {currentUser?.email || 'Stay updated with AI trends'}
           </Text>
         </View>
 
-        {/* User Stats - Now with real Firebase data */}
-        <View style={[styles.statsSection, { backgroundColor: theme.colors.cardBackground }]}>
+        <View style={statsSectionStyle}>
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: theme.colors.accentText }]}>{userStats.articlesRead}</Text>
-            <Text style={[styles.statLabel, { color: theme.colors.secondaryText }]}>Articles Read</Text>
+            <Text style={statNumberStyle}>
+              {statsLoading ? '...' : userStats.articlesRead}
+            </Text>
+            <Text style={statLabelStyle}>Articles Read</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: theme.colors.accentText }]}>{userStats.articlesSaved}</Text>
-            <Text style={[styles.statLabel, { color: theme.colors.secondaryText }]}>Saved</Text>
+            <Text style={statNumberStyle}>
+              {statsLoading ? '...' : userStats.articlesSaved}
+            </Text>
+            <Text style={statLabelStyle}>Saved</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: theme.colors.accentText }]}>{userStats.articlesLiked}</Text>
-            <Text style={[styles.statLabel, { color: theme.colors.secondaryText }]}>Liked</Text>
+            <Text style={statNumberStyle}>
+              {statsLoading ? '...' : userStats.articlesLiked}
+            </Text>
+            <Text style={statLabelStyle}>Liked</Text>
           </View>
         </View>
 
-        {/* Settings Section */}
-        <View style={[styles.settingsSection, { backgroundColor: theme.colors.cardBackground }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.primaryText }]}>Settings</Text>
+        <View style={settingsSectionStyle}>
+          <Text style={sectionTitleStyle}>Settings</Text>
           
           <TouchableOpacity 
-            style={[styles.settingItem, { borderBottomColor: theme.colors.separator }]}
-            onPress={() => handleSettingToggle('notifications', !notificationsEnabled)}
+            style={settingItemStyle}
+            onPress={handleNotificationToggle}
+            activeOpacity={0.7}
           >
             <View style={styles.settingLeft}>
               <Text style={styles.settingIcon}>🔔</Text>
-              <Text style={[styles.settingText, { color: theme.colors.primaryText }]}>Push Notifications</Text>
+              <Text style={settingTextStyle}>Push Notifications</Text>
             </View>
-            <View style={[
-              styles.toggle, 
-              { backgroundColor: theme.colors.buttonBackground },
-              notificationsEnabled && { backgroundColor: theme.colors.primaryButton }
-            ]}>
-              <Text style={[
-                styles.toggleText, 
-                { color: theme.colors.buttonText },
-                notificationsEnabled && { color: '#ffffff' }
-              ]}>
-                {notificationsEnabled ? 'ON' : 'OFF'}
+            <View style={notificationToggleStyle}>
+              <Text style={notificationToggleTextStyle}>
+                {notificationsEnabled ? 'OFF' : 'ON'}
               </Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.settingItem, { borderBottomColor: theme.colors.separator }]}
-            onPress={() => theme.toggleDarkMode()}
+            style={settingItemStyle}
+            onPress={handleDarkModeToggle}
+            activeOpacity={0.7}
           >
             <View style={styles.settingLeft}>
               <Text style={styles.settingIcon}>{theme.isDark ? '🌙' : '☀️'}</Text>
-              <Text style={[styles.settingText, { color: theme.colors.primaryText }]}>
+              <Text style={settingTextStyle}>
                 Dark Mode {theme.isSystemPreference ? '(Auto)' : ''}
               </Text>
             </View>
-            <View style={[
-              styles.toggle, 
-              { backgroundColor: theme.colors.buttonBackground },
-              theme.isDark && { backgroundColor: theme.colors.primaryButton }
-            ]}>
-              <Text style={[
-                styles.toggleText, 
-                { color: theme.colors.buttonText },
-                theme.isDark && { color: '#ffffff' }
-              ]}>
+            <View style={darkModeToggleStyle}>
+              <Text style={darkModeToggleTextStyle}>
                 {theme.isDark ? 'ON' : 'OFF'}
               </Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.settingItem, { borderBottomColor: theme.colors.separator }]}
+            style={settingItemStyle}
             onPress={() => handleAction('preferences')}
+            activeOpacity={0.7}
           >
             <View style={styles.settingLeft}>
               <Text style={styles.settingIcon}>⚙️</Text>
-              <Text style={[styles.settingText, { color: theme.colors.primaryText }]}>AI Topic Preferences</Text>
+              <Text style={settingTextStyle}>AI Topic Preferences</Text>
             </View>
-            <Text style={[styles.arrow, { color: theme.colors.secondaryText }]}>→</Text>
+            <Text style={arrowStyle}>→</Text>
           </TouchableOpacity>
         </View>
 
-        {/* More Actions Section */}
-        <View style={[styles.actionsSection, { backgroundColor: theme.colors.cardBackground }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.primaryText }]}>More</Text>
+        <View style={actionsSectionStyle}>
+          <Text style={sectionTitleStyle}>More</Text>
           
           <TouchableOpacity 
-            style={[styles.actionItem, { borderBottomColor: theme.colors.separator }]}
+            style={actionItemStyle}
             onPress={() => handleAction('about')}
+            activeOpacity={0.7}
           >
             <Text style={styles.actionIcon}>ℹ️</Text>
-            <Text style={[styles.actionText, { color: theme.colors.primaryText }]}>About AI ShortCut</Text>
-            <Text style={[styles.arrow, { color: theme.colors.secondaryText }]}>→</Text>
+            <Text style={actionTextStyle}>About AI ShortCut</Text>
+            <Text style={arrowStyle}>→</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.actionItem, { borderBottomColor: theme.colors.separator }]}
+            style={actionItemStyle}
             onPress={() => handleAction('feedback')}
+            activeOpacity={0.7}
           >
             <Text style={styles.actionIcon}>💬</Text>
-            <Text style={[styles.actionText, { color: theme.colors.primaryText }]}>Send Feedback</Text>
-            <Text style={[styles.arrow, { color: theme.colors.secondaryText }]}>→</Text>
+            <Text style={actionTextStyle}>Send Feedback</Text>
+            <Text style={arrowStyle}>→</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.actionItem, { borderBottomColor: theme.colors.separator }]}
+            style={actionItemStyle}
             onPress={() => handleAction('share')}
+            activeOpacity={0.7}
           >
             <Text style={styles.actionIcon}>📤</Text>
-            <Text style={[styles.actionText, { color: theme.colors.primaryText }]}>Share App</Text>
-            <Text style={[styles.arrow, { color: theme.colors.secondaryText }]}>→</Text>
+            <Text style={actionTextStyle}>Share App</Text>
+            <Text style={arrowStyle}>→</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Account Section with Logout */}
-        <View style={[styles.accountSection, { backgroundColor: theme.colors.cardBackground }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.primaryText }]}>Account</Text>
+        <View style={accountSectionStyle}>
+          <Text style={sectionTitleStyle}>Account</Text>
           
           <TouchableOpacity 
-            style={[styles.logoutItem, { 
-              backgroundColor: theme.isDark ? '#450a0a' : '#fef2f2',
-              borderColor: theme.isDark ? '#dc2626' : '#fecaca'
-            }]}
+            style={logoutItemStyle}
             onPress={handleLogoutPress}
+            activeOpacity={0.7}
           >
             <Text style={styles.logoutIcon}>🚪</Text>
             <Text style={[styles.logoutText, { color: '#dc2626' }]}>Sign Out</Text>
@@ -237,7 +407,9 @@ const ProfileScreen = ({ onNavigate, currentUser, onLogout }) => {
       />
     </View>
   );
-};
+});
+
+ProfileScreen.displayName = 'ProfileScreen';
 
 const styles = StyleSheet.create({
   container: {
@@ -246,6 +418,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   profileSection: {
     alignItems: 'center',
@@ -298,6 +474,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 5,
+    minHeight: 29, // Prevents layout shift during loading
   },
   statLabel: {
     fontSize: 12,

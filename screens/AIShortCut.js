@@ -1,5 +1,4 @@
-// screens/AIShortCut.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -11,177 +10,261 @@ import {
   Dimensions 
 } from 'react-native';
 import { useTheme } from '../App';
-import { markArticleAsRead, updateReadingProgress, getUserInteractions } from '../firebase/firebaseService';
- // Add this import at the top
-import { updateUserInteraction } from '../firebase/firebaseService';
+import { 
+  getUserInteractions,
+  updateUserInteraction 
+} from '../firebase/firebaseService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-
 
 const { width } = Dimensions.get('window');
 
-const AIShortCut = ({ article, onBack, currentUser, onReadFullArticle  }) => {
+const AIShortCut = React.memo(({ article, onBack, currentUser, onReadFullArticle }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets(); 
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setSaved] = useState(false);
-  const [readingProgress, setReadingProgress] = useState(0);
 
-  // Add this useEffect after your existing state declarations
-// Add this useEffect after your existing one
-useEffect(() => {
-  const loadUserInteractions = async () => {
-    if (currentUser && article) {
+  // Load user interactions and mark as read
+  useEffect(() => {
+    const loadUserInteractions = async () => {
+      if (!currentUser || !article) return;
+      
       try {
         const userInteractions = await getUserInteractions(currentUser.uid);
         setIsLiked(userInteractions.likedArticles?.includes(article.id) || false);
         setSaved(userInteractions.savedArticles?.includes(article.id) || false);
       } catch (error) {
-        console.error('Error loading user interactions:', error);
+        if (__DEV__) {
+          console.error('Error loading user interactions:', error);
+        }
       }
-      
-    markArticleAsRead(currentUser.uid, article.id);
+    };
+
+    loadUserInteractions();
+  }, [currentUser, article]);
+
+  // Memoized like handler
+  const handleLike = useCallback(async () => {
+    const newLikedState = !isLiked;
+    setIsLiked(newLikedState);
+    
+    try {
+      await updateUserInteraction(currentUser.uid, article.id, 'like', newLikedState);
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error updating like status:', error);
+      }
+      // Revert on error
+      setIsLiked(!newLikedState);
     }
-  };
+  }, [isLiked, currentUser, article]);
 
-  loadUserInteractions();
-}, [currentUser, article]);
+  // Memoized save handler
+  const handleSave = useCallback(async () => {
+    const newSavedState = !isSaved;
+    setSaved(newSavedState);
+    
+    try {
+      await updateUserInteraction(currentUser.uid, article.id, 'save', newSavedState);
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error updating save status:', error);
+      }
+      // Revert on error
+      setSaved(!newSavedState);
+    }
+  }, [isSaved, currentUser, article]);
 
-
-
-  const fullContent = `
-${article.summary}
-
----
-
-${article.content || 'Content not available for this article.'}`;
-
-  // Replace your existing handleScroll function
-const handleScroll = (event) => {
-  const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-  const progress = contentOffset.y / (contentSize.height - layoutMeasurement.height);
-  const progressPercent = Math.min(Math.max(progress, 0), 1);
-  
-  setReadingProgress(progressPercent);
-  
-  // Update reading progress in Firebase when user scrolls significantly
-  if (currentUser && article && progressPercent > 0.1) {
-    updateReadingProgress(currentUser.uid, article.id, Math.round(progressPercent * 100));
-  }
-};
-
-
-
-// Replace handleLike function
-const handleLike = async () => {
-  const newLikedState = !isLiked;
-  setIsLiked(newLikedState);
-  
-  // Update Firebase
-  try {
-    await updateUserInteraction(currentUser.uid, article.id, 'like', newLikedState);
-  } catch (error) {
-    console.error('Error updating like status:', error);
-  }
-
-  // Alert.alert(
-  //   newLikedState ? "❤️ Liked!" : "💔 Unliked",
-  //   newLikedState ? "Added to your liked articles" : "Removed from liked articles"
-  // );
-};
-
-// Replace handleSave function
-const handleSave = async () => {
-  const newSavedState = !isSaved;
-  setSaved(newSavedState);
-  
-  // Update Firebase
-  try {
-    await updateUserInteraction(currentUser.uid, article.id, 'save', newSavedState);
-  } catch (error) {
-    console.error('Error updating save status:', error);
-  }
-
-  // Alert.alert(
-  //   newSavedState ? "💾 Saved!" : "🗑️ Unsaved",
-  //   newSavedState ? "Article saved for later reading" : "Removed from saved articles"
-  // );
-};
-
-  const handleShare = () => {
+  // Memoized share handler
+  const handleShare = useCallback(() => {
     Alert.alert(
       "📤 Share Article",
-      `!!Feature coming soon!!.`,
+      "Feature coming soon!",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Back", onPress: () => console.log("Sharing article:", article.headline) }
+        { text: "OK", style: "default" }
       ]
     );
-  };
+  }, []);
+
+  // Memoized read full article handler
+  const handleReadFullArticle = useCallback(() => {
+    if (onReadFullArticle) {
+      onReadFullArticle(article);
+    }
+  }, [onReadFullArticle, article]);
+
+  // Memoized dynamic styles
+  const containerStyle = useMemo(() => [
+    styles.container,
+    { backgroundColor: theme.colors.background }
+  ], [theme.colors.background]);
+
+  const headerStyle = useMemo(() => [
+    styles.header,
+    { backgroundColor: theme.colors.headerBackground }
+  ], [theme.colors.headerBackground]);
+
+  const headerTitleStyle = useMemo(() => [
+    styles.headerTitle,
+    { color: theme.colors.headerText }
+  ], [theme.colors.headerText]);
+
+  const headlineStyle = useMemo(() => [
+    styles.headline,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const authorStyle = useMemo(() => [
+    styles.author,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const metaDividerStyle = useMemo(() => [
+    styles.metaDivider,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const readTimeStyle = useMemo(() => [
+    styles.readTime,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const publishDateStyle = useMemo(() => [
+    styles.publishDate,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const articleContentStyle = useMemo(() => [
+    styles.articleContent,
+    { backgroundColor: theme.colors.cardBackground }
+  ], [theme.colors.cardBackground]);
+
+  const sectionTitleStyle = useMemo(() => [
+    styles.sectionTitle,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const contentTextStyle = useMemo(() => [
+    styles.contentText,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const readFullArticleButtonStyle = useMemo(() => [
+    styles.readFullArticleButton,
+    { backgroundColor: theme.colors.primaryButton }
+  ], [theme.colors.primaryButton]);
+
+  const readingTimeHintStyle = useMemo(() => [
+    styles.readingTimeHint,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const actionBarStyle = useMemo(() => [
+    styles.actionBar,
+    {
+      backgroundColor: theme.colors.cardBackground,
+      borderTopColor: theme.colors.border,
+      paddingBottom: insets.bottom + 15,
+    }
+  ], [theme.colors.cardBackground, theme.colors.border, insets.bottom]);
+
+  // Memoized action button styles
+  const likeButtonStyle = useMemo(() => [
+    styles.actionButton,
+    { backgroundColor: theme.colors.buttonBackground },
+    isLiked && { backgroundColor: theme.colors.likedBackground }
+  ], [theme.colors.buttonBackground, theme.colors.likedBackground, isLiked]);
+
+  const saveButtonStyle = useMemo(() => [
+    styles.actionButton,
+    { backgroundColor: theme.colors.buttonBackground },
+    isSaved && { backgroundColor: theme.colors.savedBackground }
+  ], [theme.colors.buttonBackground, theme.colors.savedBackground, isSaved]);
+
+  const shareButtonActionStyle = useMemo(() => [
+    styles.actionButton,
+    { backgroundColor: theme.colors.buttonBackground }
+  ], [theme.colors.buttonBackground]);
+
+  const likeTextStyle = useMemo(() => [
+    styles.actionText,
+    { color: theme.colors.buttonText },
+    isLiked && { color: theme.colors.liked }
+  ], [theme.colors.buttonText, theme.colors.liked, isLiked]);
+
+  const saveTextStyle = useMemo(() => [
+    styles.actionText,
+    { color: theme.colors.buttonText },
+    isSaved && { color: theme.colors.saved }
+  ], [theme.colors.buttonText, theme.colors.saved, isSaved]);
+
+  const shareTextStyle = useMemo(() => [
+    styles.actionText,
+    { color: theme.colors.buttonText }
+  ], [theme.colors.buttonText]);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Custom Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.headerBackground }]}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+    <View style={containerStyle}>
+      <View style={headerStyle}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={onBack}
+          activeOpacity={0.7}
+        >
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         
-        <Text style={[styles.headerTitle, { color: theme.colors.headerText }]} numberOfLines={1}>
-          Article
+        <Text style={headerTitleStyle} numberOfLines={1}>
+          Article Preview
         </Text>
         
-        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+        <TouchableOpacity 
+          style={styles.shareButton} 
+          onPress={handleShare}
+          activeOpacity={0.7}
+        >
           <Text style={styles.shareIcon}>📤</Text>
         </TouchableOpacity>
-      </View>
-
-      {/* Reading Progress Bar */}
-      <View style={[styles.progressContainer, { backgroundColor: theme.colors.cardBackground }]}>
-        <View 
-          style={[
-            styles.progressBar, 
-            { 
-              width: `${readingProgress * 100}%`,
-              backgroundColor: theme.colors.primaryButton 
-            }
-          ]} 
-        />
       </View>
 
       <ScrollView 
         style={styles.content}
         showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
+        // onScroll={handleScroll}
+        // scrollEventThrottle={16}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Article Header */}
         <View style={styles.articleHeader}>
-          <Image source={{ uri: article.imageUrl }} style={styles.heroImage} />
+          <Image 
+            source={{ uri: article.imageUrl }} 
+            style={styles.heroImage}
+            resizeMode="cover"
+          />
           
           <View style={styles.headerContent}>
-            <Text style={[styles.headline, { color: theme.colors.primaryText }]}>
+            <Text style={headlineStyle}>
               {article.headline}
             </Text>
             
             <View style={styles.metaRow}>
-              <Text style={[styles.author, { color: theme.colors.secondaryText }]}>
+              <Text style={authorStyle}>
                 By {article.author}
               </Text>
-              <Text style={[styles.metaDivider, { color: theme.colors.secondaryText }]}>•</Text>
-              <Text style={[styles.readTime, { color: theme.colors.secondaryText }]}>
-                {article.readTime}
+              <Text style={metaDividerStyle}>•</Text>
+              <Text style={readTimeStyle}>
+                {article.readTime} min read
               </Text>
-              <Text style={[styles.metaDivider, { color: theme.colors.secondaryText }]}>•</Text>
-              <Text style={[styles.publishDate, { color: theme.colors.secondaryText }]}>
+              <Text style={metaDividerStyle}>•</Text>
+              <Text style={publishDateStyle}>
                 {article.publishDate}
               </Text>
             </View>
 
             <View style={styles.topicsRow}>
-              {article.topics.map((topic, index) => (
+              {article.topics?.map((topic, index) => (
                 <View 
-                  key={index} 
+                  key={`${topic}-${index}`}
                   style={[styles.topicTag, { 
                     backgroundColor: theme.isDark ? '#1e40af' : '#dbeafe' 
                   }]}
@@ -197,90 +280,71 @@ const handleSave = async () => {
           </View>
         </View>
 
-        {/* Article Content - REPLACED WITH READ FULL ARTICLE BUTTON */}
-<View style={[styles.articleContent, { backgroundColor: theme.colors.cardBackground }]}>
-  {/* Summary Section */}
-  <Text style={[styles.sectionTitle, { color: theme.colors.primaryText }]}>
-    Summary
-  </Text>
-  <Text style={[styles.contentText, { color: theme.colors.secondaryText, marginBottom: 25 }]}>
-    {article.summary}
-  </Text>
-  
-  {/* Read Full Article Button */}
-  <TouchableOpacity 
-    style={[styles.readFullArticleButton, { backgroundColor: theme.colors.primaryButton }]}
-    onPress={() => onReadFullArticle && onReadFullArticle(article)}
-  >
-    <Text style={styles.readFullArticleIcon}>📖</Text>
-    <Text style={styles.readFullArticleText}>Read Full Article</Text>
-    <Text style={styles.readFullArticleArrow}>→</Text>
-  </TouchableOpacity>
-  
-  <Text style={[styles.readingTimeHint, { color: theme.colors.secondaryText }]}>
-    {article.readTime} • Tap to read the complete article with rich content
-  </Text>
-</View>
-
+        <View style={articleContentStyle}>
+          {/* <Text style={sectionTitleStyle}>
+            Summary
+          </Text> */}
+          <Text style={[contentTextStyle, { marginBottom: 25 }]}>
+            {article.summary}
+          </Text>
+          
+          <TouchableOpacity 
+            style={readFullArticleButtonStyle}
+            onPress={handleReadFullArticle}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.readFullArticleIcon}>📖</Text>
+            <Text style={styles.readFullArticleText}>Read Full Article</Text>
+            <Text style={styles.readFullArticleArrow}>→</Text>
+          </TouchableOpacity>
+          
+          <Text style={readingTimeHintStyle}>
+            {article.readTime} min read • Tap to read the complete article with rich content
+          </Text>
+        </View>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Bottom Action Bar */}
-      <View style={[styles.actionBar, { 
-        backgroundColor: theme.colors.cardBackground,
-        borderTopColor: theme.colors.border, 
-  paddingBottom: insets.bottom + 15,
-      }]}>
+      <View style={actionBarStyle}>
         <TouchableOpacity 
-          style={[
-            styles.actionButton,
-            { backgroundColor: theme.colors.buttonBackground },
-            isLiked && { backgroundColor: theme.colors.likedBackground }
-          ]}
+          style={likeButtonStyle}
           onPress={handleLike}
+          activeOpacity={0.7}
         >
           <Text style={styles.actionIcon}>{isLiked ? '❤️' : '🤍'}</Text>
-          <Text style={[
-            styles.actionText,
-            { color: theme.colors.buttonText },
-            isLiked && { color: theme.colors.liked }
-          ]}>
+          <Text style={likeTextStyle}>
             {isLiked ? 'Liked' : 'Like'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[
-            styles.actionButton,
-            { backgroundColor: theme.colors.buttonBackground },
-            isSaved && { backgroundColor: theme.colors.savedBackground }
-          ]}
+          style={saveButtonStyle}
           onPress={handleSave}
+          activeOpacity={0.7}
         >
           <Text style={styles.actionIcon}>{isSaved ? '💾' : '🔖'}</Text>
-          <Text style={[
-            styles.actionText,
-            { color: theme.colors.buttonText },
-            isSaved && { color: theme.colors.saved }
-          ]}>
+          <Text style={saveTextStyle}>
             {isSaved ? 'Saved' : 'Save'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: theme.colors.buttonBackground }]}
+          style={shareButtonActionStyle}
           onPress={handleShare}
+          activeOpacity={0.7}
         >
           <Text style={styles.actionIcon}>📤</Text>
-          <Text style={[styles.actionText, { color: theme.colors.buttonText }]}>
+          <Text style={shareTextStyle}>
             Share
           </Text>
         </TouchableOpacity>
       </View>
     </View>
   );
-};
+});
+
+AIShortCut.displayName = 'AIShortCut';
 
 const styles = StyleSheet.create({
   container: {
@@ -323,6 +387,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   articleHeader: {
     marginBottom: 20,
@@ -386,40 +453,52 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
   contentText: {
     fontSize: 16,
     lineHeight: 26,
     textAlign: 'justify',
   },
-  relatedSection: {
-    marginHorizontal: 15,
-    marginBottom: 20,
+  readFullArticleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 25,
     borderRadius: 16,
-    padding: 20,
+    marginVertical: 15,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  relatedTitle: {
+  readFullArticleIcon: {
     fontSize: 20,
+    marginRight: 10,
+  },
+  readFullArticleText: {
+    color: 'white',
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 15,
+    flex: 1,
+    textAlign: 'center',
   },
-  relatedItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+  readFullArticleArrow: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 10,
   },
-  relatedHeadline: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 5,
-  },
-  relatedSummary: {
-    fontSize: 14,
-    lineHeight: 20,
+  readingTimeHint: {
+    fontSize: 13,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: 8,
   },
   bottomSpacer: {
     height: 100,
@@ -447,51 +526,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  // Add this to your styles object in AIShortCut.js
-sectionTitle: {
-  fontSize: 18,
-  fontWeight: 'bold',
-  marginBottom: 10,
-},
-// Add these new styles to your existing styles object:
-readFullArticleButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  paddingVertical: 18,
-  paddingHorizontal: 25,
-  borderRadius: 16,
-  marginVertical: 15,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.2,
-  shadowRadius: 8,
-  elevation: 6,
-},
-readFullArticleIcon: {
-  fontSize: 20,
-  marginRight: 10,
-},
-readFullArticleText: {
-  color: 'white',
-  fontSize: 18,
-  fontWeight: 'bold',
-  flex: 1,
-  textAlign: 'center',
-},
-readFullArticleArrow: {
-  color: 'white',
-  fontSize: 18,
-  fontWeight: 'bold',
-  marginLeft: 10,
-},
-readingTimeHint: {
-  fontSize: 13,
-  textAlign: 'center',
-  fontStyle: 'italic',
-  marginTop: 8,
-},
-
 });
 
 export default AIShortCut;

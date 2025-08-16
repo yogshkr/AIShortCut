@@ -1,12 +1,12 @@
-// components/BottomMenu.js (Dark Mode Support)
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../App';
 
-const BottomMenu = ({ activeScreen, onNavigate }) => {
+const BottomMenu = React.memo(({ activeScreen, onNavigate }) => {
   const theme = useTheme();
 
-  const menuItems = [
+  // Memoized menu items array
+  const menuItems = useMemo(() => [
     {
       id: 'Home',
       icon: '🏠',
@@ -25,59 +25,82 @@ const BottomMenu = ({ activeScreen, onNavigate }) => {
       label: 'Profile',
       activeIcon: '👤',
     },
-  ];
+  ], []);
 
-  const renderMenuItem = (item) => {
+  // Memoized bottom menu container style
+  const bottomMenuStyle = useMemo(() => [
+    styles.bottomMenu,
+    {
+      backgroundColor: theme.colors.cardBackground,
+      borderTopColor: theme.colors.border,
+      shadowColor: theme.isDark ? '#000' : '#000',
+    }
+  ], [theme.colors.cardBackground, theme.colors.border, theme.isDark]);
+
+  // Memoized menu item renderer
+  const renderMenuItem = useCallback((item) => {
     const isActive = activeScreen === item.id;
     
+    const menuItemStyle = [
+      styles.menuItem,
+      isActive && [
+        styles.activeMenuItem,
+        { backgroundColor: theme.isDark ? '#1e40af' : '#f0f9ff' }
+      ]
+    ];
+
+    const iconContainerStyle = [
+      styles.iconContainer,
+      isActive && [
+        styles.activeIconContainer,
+        { backgroundColor: theme.colors.primaryButton }
+      ]
+    ];
+
+    const labelStyle = [
+      styles.menuLabel,
+      { color: theme.colors.secondaryText },
+      isActive && [
+        styles.activeMenuLabel,
+        { color: theme.colors.accentText }
+      ]
+    ];
+
+    const activeIndicatorStyle = [
+      styles.activeIndicator,
+      { backgroundColor: theme.colors.primaryButton }
+    ];
+
     return (
       <TouchableOpacity
         key={item.id}
-        style={[
-          styles.menuItem, 
-          isActive && [styles.activeMenuItem, { 
-            backgroundColor: theme.isDark ? '#1e40af' : '#f0f9ff' 
-          }]
-        ]}
+        style={menuItemStyle}
         onPress={() => onNavigate(item.id)}
+        activeOpacity={0.7}
       >
-        <View style={[
-          styles.iconContainer, 
-          isActive && [styles.activeIconContainer, { 
-            backgroundColor: theme.colors.primaryButton 
-          }]
-        ]}>
+        <View style={iconContainerStyle}>
           <Text style={[styles.menuIcon, isActive && styles.activeMenuIcon]}>
             {isActive ? item.activeIcon : item.icon}
           </Text>
         </View>
-        <Text style={[
-          styles.menuLabel, 
-          { color: theme.colors.secondaryText },
-          isActive && [styles.activeMenuLabel, { color: theme.colors.accentText }]
-        ]}>
+        <Text style={labelStyle}>
           {item.label}
         </Text>
-        {isActive && <View style={[styles.activeIndicator, { backgroundColor: theme.colors.primaryButton }]} />}
+        {isActive ? <View style={activeIndicatorStyle} /> : null}
       </TouchableOpacity>
     );
-  };
+  }, [activeScreen, onNavigate, theme.isDark, theme.colors.primaryButton, theme.colors.secondaryText, theme.colors.accentText]);
 
   return (
-    <View style={[
-      styles.bottomMenu, 
-      { 
-        backgroundColor: theme.colors.cardBackground,
-        borderTopColor: theme.colors.border,
-        shadowColor: theme.isDark ? '#000' : '#000',
-      }
-    ]}>
+    <View style={bottomMenuStyle}>
       <View style={styles.menuContainer}>
-        {menuItems.map(item => renderMenuItem(item))}
+        {menuItems.map(renderMenuItem)}
       </View>
     </View>
   );
-};
+});
+
+BottomMenu.displayName = 'BottomMenu';
 
 const styles = StyleSheet.create({
   bottomMenu: {
@@ -103,7 +126,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   activeMenuItem: {
-    // backgroundColor handled by theme
+    // backgroundColor handled dynamically
   },
   iconContainer: {
     width: 40,
@@ -114,7 +137,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   activeIconContainer: {
-    // backgroundColor handled by theme
+    // backgroundColor handled dynamically
   },
   menuIcon: {
     fontSize: 20,

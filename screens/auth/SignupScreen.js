@@ -1,8 +1,6 @@
-// screens/auth/SignupScreen.js
-import React, { useState } from 'react';
-// Add Firebase imports:
+import React, { useState, useCallback, useMemo } from 'react';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebase/firebaseConfig';
 import { 
   View, 
@@ -18,7 +16,7 @@ import { useTheme } from '../../App';
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
 
-const SignupScreen = ({ onBack, onNavigateToLogin }) => {
+const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
   const theme = useTheme();
   const [formData, setFormData] = useState({
     name: '',
@@ -29,13 +27,16 @@ const SignupScreen = ({ onBack, onNavigateToLogin }) => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const validateForm = () => {
+  // Memoized validation function
+  const validateForm = useCallback(() => {
     const newErrors = {};
     
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
     } else if (formData.name.trim().length < 2) {
       newErrors.name = 'Name must be at least 2 characters';
+    } else if (formData.name.trim().length > 50) {
+      newErrors.name = 'Name must be less than 50 characters';
     }
     
     if (!formData.email.trim()) {
@@ -48,6 +49,8 @@ const SignupScreen = ({ onBack, onNavigateToLogin }) => {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length > 128) {
+      newErrors.password = 'Password must be less than 128 characters';
     }
     
     if (!formData.confirmPassword.trim()) {
@@ -58,100 +61,176 @@ const SignupScreen = ({ onBack, onNavigateToLogin }) => {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData.name, formData.email, formData.password, formData.confirmPassword]);
 
-// Replace handleSignup function with:
-const handleSignup = async () => {
-  if (!validateForm()) return;
-  
-  setLoading(true);
-  
-  try {
-    // Create user account
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      formData.email.trim(),
-      formData.password
-    );
+  // Memoized signup handler
+  const handleSignup = useCallback(async () => {
+    if (!validateForm()) return;
     
-    const user = userCredential.user;
+    setLoading(true);
     
-    // Update user profile with name
-    await updateProfile(user, {
-      displayName: formData.name.trim(),
-    });
-    
-    // Create user document in Firestore
-    await setDoc(doc(db, 'users', user.uid), {
-      name: formData.name.trim(),
-      email: formData.email.trim(),
-      createdAt: new Date().toISOString(),
-      preferences: {
-        notifications: true,
-        darkMode: false,
-        topics: []
-      },
-      stats: {
-        articlesRead: 0,
-        articlesLiked: 0,
-        articlesSaved: 0
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email.trim().toLowerCase(),
+        formData.password
+      );
+      
+      const user = userCredential.user;
+      
+      // Update user profile with name
+      await updateProfile(user, {
+        displayName: formData.name.trim(),
+      });
+      
+      // Create user document in Firestore with better structure
+      await setDoc(doc(db, 'users', user.uid), {
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        likedArticles: [],
+        savedArticles: [],
+        readArticles: [],
+        createdAt: serverTimestamp(),
+        lastActivity: serverTimestamp(),
+        preferences: {
+          notifications: true,
+          darkMode: false,
+          topics: []
+        },
+        stats: {
+          articlesRead: 0,
+          articlesLiked: 0,
+          articlesSaved: 0,
+          totalReadingTime: 0
+        },
+        readingProgress: {}
+      });
+      
+      Alert.alert(
+        "🎉 Account Created!",
+        `Welcome to AI ShortCut, ${formData.name.trim()}! Your account has been created successfully.`
+      );
+      
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Signup error:', error);
       }
-    });
-    
-    console.log('Signup successful:', user.email);
-    Alert.alert(
-      "🎉 Account Created!",
-      `Welcome to AI ShortCut, ${formData.name}! Your account has been created successfully.`
-    );
-    
-  } catch (error) {
-    console.error('Signup error:', error);
-    let errorMessage = 'Account creation failed. Please try again.';
-    
-    switch (error.code) {
-      case 'auth/email-already-in-use':
-        errorMessage = 'An account with this email already exists.';
-        break;
-      case 'auth/weak-password':
-        errorMessage = 'Password should be at least 6 characters.';
-        break;
-      case 'auth/invalid-email':
-        errorMessage = 'Please enter a valid email address.';
-        break;
+      
+      let errorMessage = 'Account creation failed. Please try again.';
+      
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'An account with this email already exists.';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Password should be at least 6 characters.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Please enter a valid email address.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Network error. Please check your connection.';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many attempts. Please try again later.';
+          break;
+        default:
+          errorMessage = 'Account creation failed. Please try again.';
+      }
+      
+      Alert.alert("Signup Failed", errorMessage);
+    } finally {
+      setLoading(false);
     }
-    
-    Alert.alert("Signup Failed", errorMessage);
-  } finally {
-    setLoading(false);
-  }
-};
+  }, [formData.name, formData.email, formData.password, validateForm]);
 
-
-  const updateFormData = (field, value) => {
+  // Memoized form update handler
+  const updateFormData = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
     }
-  };
+  }, [errors]);
+
+  // Memoized field handlers
+  const handleNameChange = useCallback((value) => {
+    updateFormData('name', value);
+  }, [updateFormData]);
+
+  const handleEmailChange = useCallback((value) => {
+    updateFormData('email', value);
+  }, [updateFormData]);
+
+  const handlePasswordChange = useCallback((value) => {
+    updateFormData('password', value);
+  }, [updateFormData]);
+
+  const handleConfirmPasswordChange = useCallback((value) => {
+    updateFormData('confirmPassword', value);
+  }, [updateFormData]);
+
+  // Memoized dynamic styles
+  const containerStyle = useMemo(() => [
+    styles.container,
+    { backgroundColor: theme.colors.background }
+  ], [theme.colors.background]);
+
+  const backIconStyle = useMemo(() => [
+    styles.backIcon,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const titleStyle = useMemo(() => [
+    styles.title,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const subtitleStyle = useMemo(() => [
+    styles.subtitle,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const loginTextStyle = useMemo(() => [
+    styles.loginText,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const loginLinkStyle = useMemo(() => [
+    styles.loginLink,
+    { color: theme.colors.accentText }
+  ], [theme.colors.accentText]);
+
+  const termsTextStyle = useMemo(() => [
+    styles.termsText,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const termsLinkStyle = useMemo(() => [
+    styles.termsLink,
+    { color: theme.colors.accentText }
+  ], [theme.colors.accentText]);
 
   return (
     <KeyboardAvoidingView 
       style={{ flex: 1 }} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        {/* Header */}
+      <View style={containerStyle}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={[styles.backIcon, { color: theme.colors.primaryText }]}>←</Text>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={onBack}
+            activeOpacity={0.7}
+          >
+            <Text style={backIconStyle}>←</Text>
           </TouchableOpacity>
           
           <View style={styles.titleContainer}>
             <Text style={styles.logoIcon}>🤖</Text>
-            <Text style={[styles.title, { color: theme.colors.primaryText }]}>
+            <Text style={titleStyle}>
               Join AI ShortCut
             </Text>
-            <Text style={[styles.subtitle, { color: theme.colors.secondaryText }]}>
+            <Text style={subtitleStyle}>
               Create your account to get started
             </Text>
           </View>
@@ -161,14 +240,14 @@ const handleSignup = async () => {
           style={styles.content}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
         >
-          {/* Signup Form */}
           <View style={styles.form}>
             <AuthInput
               label="Full Name"
               placeholder="Enter your full name"
               value={formData.name}
-              onChangeText={(value) => updateFormData('name', value)}
+              onChangeText={handleNameChange}
               autoCapitalize="words"
               error={errors.name}
             />
@@ -177,8 +256,9 @@ const handleSignup = async () => {
               label="Email Address"
               placeholder="Enter your email"
               value={formData.email}
-              onChangeText={(value) => updateFormData('email', value)}
+              onChangeText={handleEmailChange}
               keyboardType="email-address"
+              autoCapitalize="none"
               error={errors.email}
             />
 
@@ -186,7 +266,7 @@ const handleSignup = async () => {
               label="Password"
               placeholder="Create a password"
               value={formData.password}
-              onChangeText={(value) => updateFormData('password', value)}
+              onChangeText={handlePasswordChange}
               secureTextEntry
               error={errors.password}
             />
@@ -195,42 +275,44 @@ const handleSignup = async () => {
               label="Confirm Password"
               placeholder="Confirm your password"
               value={formData.confirmPassword}
-              onChangeText={(value) => updateFormData('confirmPassword', value)}
+              onChangeText={handleConfirmPasswordChange}
               secureTextEntry
               error={errors.confirmPassword}
             />
           </View>
 
-          {/* Action Buttons */}
           <View style={styles.actions}>
             <AuthButton
               title="Create Account"
               onPress={handleSignup}
               loading={loading}
               variant="primary"
+              disabled={loading}
             />
 
             <View style={styles.loginPrompt}>
-              <Text style={[styles.loginText, { color: theme.colors.secondaryText }]}>
+              <Text style={loginTextStyle}>
                 Already have an account?{' '}
               </Text>
-              <TouchableOpacity onPress={onNavigateToLogin}>
-                <Text style={[styles.loginLink, { color: theme.colors.accentText }]}>
+              <TouchableOpacity 
+                onPress={onNavigateToLogin}
+                activeOpacity={0.7}
+              >
+                <Text style={loginLinkStyle}>
                   Sign In
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Terms */}
           <View style={styles.terms}>
-            <Text style={[styles.termsText, { color: theme.colors.secondaryText }]}>
+            <Text style={termsTextStyle}>
               By creating an account, you agree to our{' '}
-              <Text style={[styles.termsLink, { color: theme.colors.accentText }]}>
+              <Text style={termsLinkStyle}>
                 Terms of Service
               </Text>
               {' '}and{' '}
-              <Text style={[styles.termsLink, { color: theme.colors.accentText }]}>
+              <Text style={termsLinkStyle}>
                 Privacy Policy
               </Text>
             </Text>
@@ -239,7 +321,9 @@ const handleSignup = async () => {
       </View>
     </KeyboardAvoidingView>
   );
-};
+});
+
+SignupScreen.displayName = 'SignupScreen';
 
 const styles = StyleSheet.create({
   container: {
@@ -278,6 +362,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 30,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
   },
   form: {
     marginBottom: 30,

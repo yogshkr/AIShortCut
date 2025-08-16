@@ -1,38 +1,41 @@
-// components/Header.js (Updated with Optional Logout)
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useTheme } from '../App';
 
-const Header = ({ currentScreen = 'Home', currentUser, onLogout }) => {
+const Header = React.memo(({ currentScreen = 'Home', currentUser, onLogout }) => {
   const theme = useTheme();
 
-  const getCurrentDate = () => {
+  // Memoized current date calculation
+  const currentDate = useMemo(() => {
     const options = { 
       month: 'short', 
       day: 'numeric' 
     };
     return new Date().toLocaleDateString('en-US', options);
-  };
+  }, []);
 
-  const getScreenTitle = () => {
+  // Memoized screen title
+  const screenTitle = useMemo(() => {
     switch(currentScreen) {
       case 'Home': return 'AI ShortCut';
       case 'Profile': return 'Profile';
       case 'Saved': return 'Saved Articles';
       default: return 'AI ShortCut';
     }
-  };
+  }, [currentScreen]);
 
-  const getScreenSubtitle = () => {
+  // Memoized screen subtitle
+  const screenSubtitle = useMemo(() => {
     switch(currentScreen) {
       case 'Home': return 'AI News Feed';
       case 'Profile': return 'Settings & Preferences';
       case 'Saved': return 'Your Bookmarks';
       default: return 'AI News Feed';
     }
-  };
+  }, [currentScreen]);
 
-  const handleQuickLogout = () => {
+  // Memoized logout handler
+  const handleQuickLogout = useCallback(() => {
     Alert.alert(
       "🚪 Quick Sign Out",
       "Sign out of AI ShortCut?",
@@ -41,68 +44,107 @@ const Header = ({ currentScreen = 'Home', currentUser, onLogout }) => {
         { text: "Sign Out", style: "destructive", onPress: onLogout }
       ]
     );
-  };
+  }, [onLogout]);
+
+  // Memoized dark mode toggle handler
+  const handleDarkModeToggle = useCallback(() => {
+    theme.toggleDarkMode();
+  }, [theme.toggleDarkMode]);
+
+  // Memoized dynamic styles
+  const headerStyle = useMemo(() => [
+    styles.header,
+    { backgroundColor: theme.colors.headerBackground }
+  ], [theme.colors.headerBackground]);
+
+  const titleStyle = useMemo(() => [
+    styles.title,
+    { color: theme.colors.headerText }
+  ], [theme.colors.headerText]);
+
+  const subtitleStyle = useMemo(() => [
+    styles.subtitle,
+    { color: theme.colors.headerSubtext }
+  ], [theme.colors.headerSubtext]);
+
+  const dateTextStyle = useMemo(() => [
+    styles.dateText,
+    { color: theme.colors.headerSubtext }
+  ], [theme.colors.headerSubtext]);
+
+  const headerButtonStyle = useMemo(() => [
+    styles.headerButton,
+    { backgroundColor: theme.colors.headerButton }
+  ], [theme.colors.headerButton]);
+
+  const systemIndicatorStyle = useMemo(() => [
+    styles.systemIndicator,
+    { color: theme.colors.headerSubtext }
+  ], [theme.colors.headerSubtext]);
+
+  // Memoized notification handler
+const handleNotificationPress = useCallback(() => {
+  Alert.alert(
+    "🔔 Notifications",
+    "Push notifications feature coming soon in the next update!",
+    [{ text: "OK", style: "default" }]
+  );
+}, []);
+
 
   return (
-    <View style={[styles.header, { backgroundColor: theme.colors.headerBackground }]}>
+    <View style={headerStyle}>
       <View style={styles.leftSection}>
         <View style={styles.titleRow}>
           <Text style={styles.appIcon}>🤖</Text>
           <View style={styles.titleContainer}>
-            <Text style={[styles.title, { color: theme.colors.headerText }]}>
-              {getScreenTitle()}
+            <Text style={titleStyle}>
+              {screenTitle}
             </Text>
-            <Text style={[styles.subtitle, { color: theme.colors.headerSubtext }]}>
-              {getScreenSubtitle()}
+            <Text style={subtitleStyle}>
+              {screenSubtitle}
             </Text>
           </View>
         </View>
       </View>
       
       <View style={styles.rightSection}>
-        <Text style={[styles.dateText, { color: theme.colors.headerSubtext }]}>
-          {getCurrentDate()}
+        <Text style={dateTextStyle}>
+          {currentDate}
         </Text>
         
         <View style={styles.buttonRow}>
-          {/* Dark Mode Toggle */}
           <TouchableOpacity 
-            style={[styles.headerButton, { backgroundColor: theme.colors.headerButton }]}
-            onPress={theme.toggleDarkMode}
+            style={headerButtonStyle}
+            onPress={handleDarkModeToggle}
+            activeOpacity={0.7}
           >
             <Text style={styles.headerButtonIcon}>
               {theme.isDark ? '☀️' : '🌙'}
             </Text>
           </TouchableOpacity>
           
-          {/* User Profile / Quick Logout (only show on non-Profile screens) */}
-          {/* {currentScreen !== 'Profile' && currentUser && (
-            <TouchableOpacity 
-              style={[styles.headerButton, { backgroundColor: theme.colors.headerButton }]}
-              onPress={handleQuickLogout}
-            >
-              <Text style={styles.headerButtonIcon}>👤</Text>
-            </TouchableOpacity>
-          )} */}
-          
-          {/* Notification Button */}
           <TouchableOpacity 
-            style={[styles.headerButton, { backgroundColor: theme.colors.headerButton }]}
-          >
-            <Text style={styles.headerButtonIcon}>🔔</Text>
-          </TouchableOpacity>
+  style={headerButtonStyle}
+  onPress={handleNotificationPress}  // Add this line
+  activeOpacity={0.7}
+>
+  <Text style={styles.headerButtonIcon}>🔔</Text>
+</TouchableOpacity>
+
         </View>
         
-        {/* System preference indicator */}
-        {theme.isSystemPreference && (
-          <Text style={[styles.systemIndicator, { color: theme.colors.headerSubtext }]}>
+        {theme.isSystemPreference ? (
+          <Text style={systemIndicatorStyle}>
             Auto
           </Text>
-        )}
+        ) : null}
       </View>
     </View>
   );
-};
+});
+
+Header.displayName = 'Header';
 
 const styles = StyleSheet.create({
   header: {

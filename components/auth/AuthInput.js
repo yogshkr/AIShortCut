@@ -1,9 +1,8 @@
-// components/auth/AuthInput.js
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, TextInput, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../App';
 
-const AuthInput = ({ 
+const AuthInput = React.memo(({ 
   label, 
   placeholder, 
   value, 
@@ -17,40 +16,76 @@ const AuthInput = ({
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
-  const togglePasswordVisibility = () => {
+  // Memoized password visibility toggle
+  const togglePasswordVisibility = useCallback(() => {
     setIsPasswordVisible(prev => !prev);
-  };
+  }, []);
+
+  // Memoized focus handlers
+  const handleFocus = useCallback(() => {
+    setIsFocused(true);
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    setIsFocused(false);
+  }, []);
+
+  // Memoized dynamic input container style
+  const inputContainerStyle = useMemo(() => [
+    styles.inputContainer,
+    {
+      backgroundColor: theme.colors.cardBackground,
+      borderColor: error 
+        ? '#dc2626' 
+        : (isFocused ? theme.colors.primaryButton : theme.colors.border)
+    }
+  ], [theme.colors.cardBackground, theme.colors.primaryButton, theme.colors.border, error, isFocused]);
+
+  // Memoized label style
+  const labelStyle = useMemo(() => [
+    styles.label,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  // Memoized input style
+  const inputStyle = useMemo(() => [
+    styles.input,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  // Memoized secure text entry value
+  const isSecureEntry = useMemo(() => {
+    return secureTextEntry && !isPasswordVisible;
+  }, [secureTextEntry, isPasswordVisible]);
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.label, { color: theme.colors.primaryText }]}>
+      <Text style={labelStyle}>
         {label}
       </Text>
       
-      <View style={[
-        styles.inputContainer,
-        { 
-          backgroundColor: theme.colors.cardBackground,
-          borderColor: error ? '#dc2626' : (isFocused ? theme.colors.primaryButton : theme.colors.border)
-        }
-      ]}>
+      <View style={inputContainerStyle}>
         <TextInput
-          style={[styles.input, { color: theme.colors.primaryText }]}
+          style={inputStyle}
           placeholder={placeholder}
           placeholderTextColor={theme.colors.secondaryText}
           value={value}
           onChangeText={onChangeText}
-          secureTextEntry={secureTextEntry && !isPasswordVisible}
+          secureTextEntry={isSecureEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          autoCorrect={false}
+          spellCheck={false}
         />
         
         {secureTextEntry && (
           <TouchableOpacity 
             style={styles.eyeButton}
             onPress={togglePasswordVisibility}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.6}
           >
             <Text style={styles.eyeIcon}>
               {isPasswordVisible ? '👁️' : '🙈'}
@@ -59,12 +94,14 @@ const AuthInput = ({
         )}
       </View>
       
-      {error && (
+      {error ? (
         <Text style={styles.errorText}>{error}</Text>
-      )}
+      ) : null}
     </View>
   );
-};
+});
+
+AuthInput.displayName = 'AuthInput';
 
 const styles = StyleSheet.create({
   container: {

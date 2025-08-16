@@ -1,6 +1,4 @@
-// screens/auth/LoginScreen.js
-import React, { useState } from 'react';
-// Add Firebase import:
+import React, { useState, useCallback, useMemo } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../firebase/firebaseConfig';
 import { 
@@ -17,7 +15,7 @@ import { useTheme } from '../../App';
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
 
-const LoginScreen = ({ onBack, onNavigateToSignup }) => {
+const LoginScreen = React.memo(({ onBack, onNavigateToSignup }) => {
   const theme = useTheme();
   const [formData, setFormData] = useState({
     email: '',
@@ -26,7 +24,8 @@ const LoginScreen = ({ onBack, onNavigateToSignup }) => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const validateForm = () => {
+  // Memoized validation function
+  const validateForm = useCallback(() => {
     const newErrors = {};
     
     if (!formData.email.trim()) {
@@ -43,75 +42,129 @@ const LoginScreen = ({ onBack, onNavigateToSignup }) => {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData.email, formData.password]);
 
-// Replace handleLogin function with:
-const handleLogin = async () => {
-  if (!validateForm()) return;
-  
-  setLoading(true);
-  
-  try {
-    const userCredential = await signInWithEmailAndPassword(
-      auth, 
-      formData.email.trim(), 
-      formData.password
-    );
+  // Memoized login handler
+  const handleLogin = useCallback(async () => {
+    if (!validateForm()) return;
     
-    console.log('Login successful:', userCredential.user.email);
-    // onLoginSuccess will be called automatically by onAuthStateChanged
+    setLoading(true);
     
-  } catch (error) {
-    console.error('Login error:', error);
-    let errorMessage = 'Login failed. Please try again.';
-    
-    switch (error.code) {
-      case 'auth/user-not-found':
-        errorMessage = 'No account found with this email address.';
-        break;
-      case 'auth/wrong-password':
-        errorMessage = 'Incorrect password. Please try again.';
-        break;
-      case 'auth/invalid-email':
-        errorMessage = 'Please enter a valid email address.';
-        break;
-      case 'auth/too-many-requests':
-        errorMessage = 'Too many failed attempts. Please try again later.';
-        break;
+    try {
+      await signInWithEmailAndPassword(
+        auth, 
+        formData.email.trim().toLowerCase(), 
+        formData.password
+      );
+      // onAuthStateChanged will handle navigation
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Login error:', error);
+      }
+      
+      let errorMessage = 'Login failed. Please try again.';
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = 'No account found with this email address.';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = 'Incorrect password. Please try again.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Please enter a valid email address.';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many failed attempts. Please try again later.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Network error. Please check your connection.';
+          break;
+        default:
+          errorMessage = 'Login failed. Please try again.';
+      }
+      
+      Alert.alert("Login Failed", errorMessage);
+    } finally {
+      setLoading(false);
     }
-    
-    Alert.alert("Login Failed", errorMessage);
-  } finally {
-    setLoading(false);
-  }
-};
+  }, [formData.email, formData.password, validateForm]);
 
-
-  const updateFormData = (field, value) => {
+  // Memoized form update handler
+  const updateFormData = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
     }
-  };
+  }, [errors]);
+
+  // Memoized email handler
+  const handleEmailChange = useCallback((value) => {
+    updateFormData('email', value);
+  }, [updateFormData]);
+
+  // Memoized password handler
+  const handlePasswordChange = useCallback((value) => {
+    updateFormData('password', value);
+  }, [updateFormData]);
+
+  // Memoized dynamic styles
+  const containerStyle = useMemo(() => [
+    styles.container,
+    { backgroundColor: theme.colors.background }
+  ], [theme.colors.background]);
+
+  const backIconStyle = useMemo(() => [
+    styles.backIcon,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const titleStyle = useMemo(() => [
+    styles.title,
+    { color: theme.colors.primaryText }
+  ], [theme.colors.primaryText]);
+
+  const subtitleStyle = useMemo(() => [
+    styles.subtitle,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const forgotPasswordTextStyle = useMemo(() => [
+    styles.forgotPasswordText,
+    { color: theme.colors.accentText }
+  ], [theme.colors.accentText]);
+
+  const signupTextStyle = useMemo(() => [
+    styles.signupText,
+    { color: theme.colors.secondaryText }
+  ], [theme.colors.secondaryText]);
+
+  const signupLinkStyle = useMemo(() => [
+    styles.signupLink,
+    { color: theme.colors.accentText }
+  ], [theme.colors.accentText]);
 
   return (
     <KeyboardAvoidingView 
       style={{ flex: 1 }} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        {/* Header */}
+      <View style={containerStyle}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={[styles.backIcon, { color: theme.colors.primaryText }]}>←</Text>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={onBack}
+            activeOpacity={0.7}
+          >
+            <Text style={backIconStyle}>←</Text>
           </TouchableOpacity>
           
           <View style={styles.titleContainer}>
             <Text style={styles.logoIcon}>🤖</Text>
-            <Text style={[styles.title, { color: theme.colors.primaryText }]}>
+            <Text style={titleStyle}>
               Welcome Back
             </Text>
-            <Text style={[styles.subtitle, { color: theme.colors.secondaryText }]}>
+            <Text style={subtitleStyle}>
               Sign in to continue reading AI news
             </Text>
           </View>
@@ -121,15 +174,16 @@ const handleLogin = async () => {
           style={styles.content}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
         >
-          {/* Login Form */}
           <View style={styles.form}>
             <AuthInput
               label="Email Address"
               placeholder="Enter your email"
               value={formData.email}
-              onChangeText={(value) => updateFormData('email', value)}
+              onChangeText={handleEmailChange}
               keyboardType="email-address"
+              autoCapitalize="none"
               error={errors.email}
             />
 
@@ -137,33 +191,39 @@ const handleLogin = async () => {
               label="Password"
               placeholder="Enter your password"
               value={formData.password}
-              onChangeText={(value) => updateFormData('password', value)}
+              onChangeText={handlePasswordChange}
               secureTextEntry
               error={errors.password}
             />
 
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={[styles.forgotPasswordText, { color: theme.colors.accentText }]}>
+            <TouchableOpacity 
+              style={styles.forgotPassword}
+              activeOpacity={0.7}
+            >
+              <Text style={forgotPasswordTextStyle}>
                 Forgot Password?
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Action Buttons */}
           <View style={styles.actions}>
             <AuthButton
               title="Sign In"
               onPress={handleLogin}
               loading={loading}
               variant="primary"
+              // disabled={loading}
             />
 
             <View style={styles.signupPrompt}>
-              <Text style={[styles.signupText, { color: theme.colors.secondaryText }]}>
+              <Text style={signupTextStyle}>
                 Don't have an account?{' '}
               </Text>
-              <TouchableOpacity onPress={onNavigateToSignup}>
-                <Text style={[styles.signupLink, { color: theme.colors.accentText }]}>
+              <TouchableOpacity 
+                onPress={onNavigateToSignup}
+                activeOpacity={0.7}
+              >
+                <Text style={signupLinkStyle}>
                   Sign Up
                 </Text>
               </TouchableOpacity>
@@ -173,7 +233,9 @@ const handleLogin = async () => {
       </View>
     </KeyboardAvoidingView>
   );
-};
+});
+
+LoginScreen.displayName = 'LoginScreen';
 
 const styles = StyleSheet.create({
   container: {
@@ -213,19 +275,25 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 30,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },
   form: {
     marginBottom: 30,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
     marginTop: 10,
+    padding: 4,
   },
   forgotPasswordText: {
     fontSize: 14,
     fontWeight: '600',
   },
   actions: {
-    marginBottom: 40,
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   signupPrompt: {
     flexDirection: 'row',
