@@ -287,7 +287,7 @@ const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
               onPress={handleSignup}
               loading={loading}
               variant="primary"
-              disabled={loading}
+              // disabled={loading}
             />
 
             <View style={styles.loginPrompt}>

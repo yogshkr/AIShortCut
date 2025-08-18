@@ -20,7 +20,7 @@ import RenderHtml from 'react-native-render-html';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-
+const systemFonts = ['System'];
 const FullArticleScreen = React.memo(({ article, onBack, currentUser }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets(); 
@@ -341,7 +341,7 @@ const FullArticleScreen = React.memo(({ article, onBack, currentUser }) => {
               </Text>
               <Text style={metaDividerStyle}>•</Text>
               <Text style={readTimeStyle}>
-                {article.readTime}
+                {article.readTime} min read
               </Text>
               <Text style={metaDividerStyle}>•</Text>
               <Text style={publishDateStyle}>
@@ -492,7 +492,7 @@ const FullArticleScreen = React.memo(({ article, onBack, currentUser }) => {
       contentWidth={width - 70}
       source={{ html: article.content || '<p>Rich content not available for this article.</p>' }}
       tagsStyles={htmlTagsStyles}
-      systemFonts={['System']}
+      systemFonts={systemFonts}
     />
   </View>
 
@@ -722,7 +722,7 @@ summaryInner: {
   marginLeft: 6,
 },
 summaryLabel: {
-  fontSize: 12,
+  fontSize: 20,
   fontWeight: '700',
   letterSpacing: 1.2,
   textTransform: 'uppercase',
@@ -764,7 +764,7 @@ articleProHeader: {
 },
 
 articleProTitle: {
-  fontSize: 12,
+  fontSize: 22,
   fontWeight: '700',
   letterSpacing: 1.2,
   textTransform: 'uppercase',
