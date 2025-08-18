@@ -216,7 +216,7 @@ const AIShortCut = React.memo(({ article, onBack, currentUser, onReadFullArticle
         </TouchableOpacity>
         
         <Text style={headerTitleStyle} numberOfLines={1}>
-          Article Preview
+          ShortCut
         </Text>
         
         <TouchableOpacity 
@@ -280,28 +280,80 @@ const AIShortCut = React.memo(({ article, onBack, currentUser, onReadFullArticle
           </View>
         </View>
 
-        <View style={articleContentStyle}>
-          {/* <Text style={sectionTitleStyle}>
-            Summary
-          </Text> */}
-          <Text style={[contentTextStyle, { marginBottom: 25 }]}>
-            {article.summary}
-          </Text>
-          
-          <TouchableOpacity 
-            style={readFullArticleButtonStyle}
-            onPress={handleReadFullArticle}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.readFullArticleIcon}>📖</Text>
-            <Text style={styles.readFullArticleText}>Read Full Article</Text>
-            <Text style={styles.readFullArticleArrow}>→</Text>
-          </TouchableOpacity>
-          
-          <Text style={readingTimeHintStyle}>
-            {article.readTime} min read • Tap to read the complete article with rich content
-          </Text>
-        </View>
+        {/* Summary Section */}
+<View
+  style={[
+    styles.summaryBox,
+    {
+      backgroundColor: theme.colors.cardBackground,
+      borderColor: theme.isDark ? 'rgba(99,102,241,0.35)' : 'rgba(59,130,246,0.35)',
+      shadowColor: theme.isDark ? 'rgba(0,0,0,0.8)' : '#000',
+    },
+  ]}
+>
+  <View
+    style={[
+      styles.summaryAccent,
+      { backgroundColor: theme.isDark ? 'rgba(99,102,241,0.9)' : 'rgba(59,130,246,0.9)' },
+    ]}
+  />
+  <View
+    style={[
+      styles.summaryInner,
+      {
+        backgroundColor: theme.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.55)',
+      },
+    ]}
+  >
+    <Text
+      style={[
+        styles.summaryLabel,
+        { color: theme.isDark ? '#c7d2fe' : '#1e3a8a' },
+      ]}
+    >
+      📝
+    </Text>
+
+    <Text
+      style={[
+        styles.summaryText,
+        { color: theme.colors.primaryText },
+      ]}
+    >
+      {article.summary}
+    </Text>
+  </View>
+
+  {/* Soft corner glow (subtle, adjusted for dark mode) */}
+  <View
+    pointerEvents="none"
+    style={[
+      styles.summaryGlow,
+      {
+        backgroundColor: theme.isDark ? 'rgba(99,102,241,0.25)' : 'rgba(59,130,246,0.18)',
+      },
+    ]}
+  />
+</View>
+
+
+{/* Read Full Article Section */}
+<View style={[styles.readMoreBox, { backgroundColor: theme.colors.cardBackground }]}>
+  <TouchableOpacity 
+    style={readFullArticleButtonStyle}
+    onPress={handleReadFullArticle}
+    activeOpacity={0.8}
+  >
+    <Text style={styles.readFullArticleIcon}>📖</Text>
+    <Text style={styles.readFullArticleText}>Read Full Article</Text>
+    <Text style={styles.readFullArticleArrow}>→</Text>
+  </TouchableOpacity>
+
+  <Text style={readingTimeHintStyle}>
+    {article.readTime} min read • Tap to read the complete article with rich content
+  </Text>
+</View>
+
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -525,7 +577,85 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 14,
     fontWeight: '600',
-  },
+  },summaryBox: {
+  marginHorizontal: 15,
+  marginBottom: 20,
+  borderRadius: 12,
+  padding: 20,
+  shadowColor: '#000',
+  shadowOpacity: 0.05,
+  shadowRadius: 3,
+  elevation: 2,
+},
+
+readMoreBox: {
+  marginHorizontal: 15,
+  marginBottom: 20,
+  borderRadius: 12,
+  padding: 20,
+  flexDirection: 'column',
+  justifyContent: 'center',
+  alignItems: 'center',
+  shadowColor: '#000',
+  shadowOpacity: 0.05,
+  shadowRadius: 3,
+  elevation: 2,
+},
+summaryBox: {
+  position: 'relative',
+  marginHorizontal: 15,
+  marginBottom: 20,
+  borderRadius: 16,
+  padding: 0,
+  borderWidth: 1,
+  overflow: 'hidden',
+  // Elevation/Shadow tuned for both modes
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.18,
+  shadowRadius: 20,
+  elevation: 5,
+},
+
+summaryAccent: {
+  position: 'absolute',
+  left: 0,
+  top: 0,
+  bottom: 0,
+  width: 6,
+},
+
+summaryInner: {
+  borderRadius: 16,
+  paddingVertical: 18,
+  paddingHorizontal: 18,
+  marginLeft: 6, // to clear the accent bar
+},
+
+summaryLabel: {
+  fontSize: 12,
+  fontWeight: '700',
+  letterSpacing: 1.2,
+  textTransform: 'uppercase',
+  marginBottom: 8,
+},
+
+summaryText: {
+  fontSize: 16,
+  lineHeight: 26,
+},
+
+summaryGlow: {
+  position: 'absolute',
+  right: -30,
+  top: -30,
+  width: 120,
+  height: 120,
+  borderRadius: 60,
+  filter: undefined, // ignored on RN, placeholder
+  opacity: 0.8,
+},
+
 });
 
 export default AIShortCut;
+

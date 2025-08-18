@@ -1,16 +1,17 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from 'firebase/firestore';
+import Constants from 'expo-constants';
 
 // Production Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAXIQ7bXIS1wVxenaeZTql9f3WNig78XN8",
-  authDomain: "aishortcut-20e54.firebaseapp.com",
-  projectId: "aishortcut-20e54",
-  storageBucket: "aishortcut-20e54.firebasestorage.app",
-  messagingSenderId: "909260475551",
-  appId: "1:909260475551:web:02109240c68148223fa6aa",
-  measurementId: "G-09X2JS8D8E"
+  apiKey: Constants.expoConfig.extra.apiKey,
+  authDomain: Constants.expoConfig.extra.authDomain,
+  projectId: Constants.expoConfig.extra.projectId,
+  storageBucket: Constants.expoConfig.extra.storageBucket,
+  messagingSenderId: Constants.expoConfig.extra.messagingSenderId,
+  appId: Constants.expoConfig.extra.appId,
+  measurementId: Constants.expoConfig.extra.measurementId,
 };
 
 // Initialize Firebase with error handling

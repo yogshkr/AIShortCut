@@ -368,25 +368,146 @@ const FullArticleScreen = React.memo(({ article, onBack, currentUser }) => {
           </View>
         </View>
 
-        <View style={articleContentStyle}>
-          <Text style={sectionTitleStyle}>
-            Summary
-          </Text>
-          <Text style={[contentTextStyle, { marginBottom: 20 }]}>
-            {article.summary}
-          </Text>
-          
-          <Text style={sectionTitleStyle}>
-            Full Article
-          </Text>
-          
-          <RenderHtml
-            contentWidth={width - 70}
-            source={{ html: article.content || '<p>Rich content not available for this article.</p>' }}
-            tagsStyles={htmlTagsStyles}
-            systemFonts={['System']}
-          />
-        </View>
+        {/* Summary Highlight Card */}
+<View
+  style={[
+    styles.summaryBox,
+    {
+      backgroundColor: theme.colors.cardBackground,
+      borderColor: theme.isDark ? 'rgba(99,102,241,0.35)' : 'rgba(59,130,246,0.35)',
+      shadowColor: theme.isDark ? 'rgba(0,0,0,0.8)' : '#000',
+    },
+  ]}
+>
+  <View
+    style={[
+      styles.summaryAccent,
+      { backgroundColor: theme.isDark ? 'rgba(99,102,241,0.9)' : 'rgba(59,130,246,0.9)' },
+    ]}
+  />
+  <View
+    style={[
+      styles.summaryInner,
+      { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.55)' },
+    ]}
+  >
+    <Text
+      style={[
+        styles.summaryLabel,
+        { color: theme.isDark ? '#c7d2fe' : '#1e3a8a' },
+      ]}
+    >
+      📝
+    </Text>
+
+    <Text
+      style={[
+        styles.summaryText,
+        { color: theme.colors.primaryText },
+      ]}
+    >
+      {article.summary}
+    </Text>
+  </View>
+
+  <View
+    pointerEvents="none"
+    style={[
+      styles.summaryGlow,
+      { backgroundColor: theme.isDark ? 'rgba(99,102,241,0.25)' : 'rgba(59,130,246,0.18)' },
+    ]}
+  />
+</View>
+
+{/* Keep your next section as-is */}
+{/* Full Article — Modern Pro Card */}
+<View
+  style={[
+    styles.articleProBox,
+    {
+      backgroundColor: theme.colors.cardBackground,
+      borderColor: theme.isDark ? 'rgba(148,163,184,0.22)' : 'rgba(2,6,23,0.08)',
+      shadowColor: theme.isDark ? 'rgba(0,0,0,0.9)' : '#000',
+    },
+  ]}
+>
+  {/* Header strip with subtle gradient */}
+  <View
+    style={[
+      styles.articleProHeader,
+      {
+        backgroundColor: theme.isDark ? 'rgba(30,41,59,0.6)' : 'rgba(241,245,249,0.7)',
+        borderBottomColor: theme.isDark ? 'rgba(148,163,184,0.15)' : 'rgba(2,6,23,0.06)',
+      },
+    ]}
+  >
+    <Text
+      style={[
+        styles.articleProTitle,
+        { color: theme.colors.primaryText },
+      ]}
+      numberOfLines={1}
+    >
+      📖
+    </Text>
+
+    {/* Meta chips (optional, hide if you don’t have data) */}
+    {Array.isArray(article.topics) && article.topics.length > 0 && (
+      <View style={styles.articleProChips}>
+        {article.topics.slice(0, 3).map((t, i) => (
+          <View
+            key={`${t}-${i}`}
+            style={[
+              styles.articleProChip,
+              {
+                backgroundColor: theme.isDark ? 'rgba(99,102,241,0.14)' : 'rgba(59,130,246,0.12)',
+                borderColor: theme.isDark ? 'rgba(99,102,241,0.28)' : 'rgba(59,130,246,0.26)',
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.articleProChipText,
+                { color: theme.isDark ? '#c7d2fe' : '#1e3a8a' },
+              ]}
+            >
+              {t}
+            </Text>
+          </View>
+        ))}
+      </View>
+    )}
+  </View>
+
+  {/* Content container */}
+  <View
+    style={[
+      styles.articleProContent,
+      {
+        backgroundColor: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.75)',
+      },
+    ]}
+  >
+    <RenderHtml
+      contentWidth={width - 70}
+      source={{ html: article.content || '<p>Rich content not available for this article.</p>' }}
+      tagsStyles={htmlTagsStyles}
+      systemFonts={['System']}
+    />
+  </View>
+
+  {/* Soft corner aura */}
+  <View
+    pointerEvents="none"
+    style={[
+      styles.articleProAura,
+      {
+        backgroundColor: theme.isDark ? 'rgba(99,102,241,0.18)' : 'rgba(59,130,246,0.12)',
+      },
+    ]}
+  />
+</View>
+
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -574,6 +695,115 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  summaryBox: {
+  position: 'relative',
+  marginHorizontal: 15,
+  marginBottom: 20,
+  borderRadius: 16,
+  padding: 0,
+  borderWidth: 1,
+  overflow: 'hidden',
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.18,
+  shadowRadius: 20,
+  elevation: 5,
+},
+summaryAccent: {
+  position: 'absolute',
+  left: 0,
+  top: 0,
+  bottom: 0,
+  width: 6,
+},
+summaryInner: {
+  borderRadius: 16,
+  paddingVertical: 18,
+  paddingHorizontal: 18,
+  marginLeft: 6,
+},
+summaryLabel: {
+  fontSize: 12,
+  fontWeight: '700',
+  letterSpacing: 1.2,
+  textTransform: 'uppercase',
+  marginBottom: 8,
+},
+summaryText: {
+  fontSize: 16,
+  lineHeight: 26,
+},
+summaryGlow: {
+  position: 'absolute',
+  right: -30,
+  top: -30,
+  width: 120,
+  height: 120,
+  borderRadius: 60,
+  opacity: 0.8,
+},
+articleProBox: {
+  position: 'relative',
+  marginHorizontal: 15,
+  marginBottom: 20,
+  borderRadius: 18,
+  borderWidth: 1,
+  overflow: 'hidden',
+  shadowOffset: { width: 0, height: 16 },
+  shadowOpacity: 0.20,
+  shadowRadius: 32,
+  elevation: 6,
+},
+
+articleProHeader: {
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+  borderBottomWidth: StyleSheet.hairlineWidth,
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+},
+
+articleProTitle: {
+  fontSize: 12,
+  fontWeight: '700',
+  letterSpacing: 1.2,
+  textTransform: 'uppercase',
+},
+
+articleProChips: {
+  flexDirection: 'row',
+  gap: 8,
+},
+
+articleProChip: {
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  borderRadius: 999,
+  borderWidth: 1,
+  marginLeft: 8,
+},
+
+articleProChipText: {
+  fontSize: 11,
+  fontWeight: '700',
+  letterSpacing: 0.3,
+},
+
+articleProContent: {
+  paddingHorizontal: 18,
+  paddingVertical: 18,
+},
+
+articleProAura: {
+  position: 'absolute',
+  left: -28,
+  bottom: -28,
+  width: 140,
+  height: 140,
+  borderRadius: 70,
+  opacity: 0.85,
+},
+
 });
 
 export default FullArticleScreen;
