@@ -1,6 +1,4 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../firebase/firebaseConfig';
 import { 
   View, 
   Text, 
@@ -11,6 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform 
 } from 'react-native';
+import { signInWithEmailAndPassword, sendEmailVerification, signOut, sendPasswordResetEmail  } from 'firebase/auth';
+import { auth } from '../../firebase/firebaseConfig';
 import { useTheme } from '../../App';
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
@@ -24,7 +24,10 @@ const LoginScreen = React.memo(({ onBack, onNavigateToSignup }) => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  // Memoized validation function
+  // Helper
+  const normalizeEmail = useCallback((v) => v.trim().toLowerCase(), []);
+
+  // Validation
   const validateForm = useCallback(() => {
     const newErrors = {};
     
@@ -44,71 +47,146 @@ const LoginScreen = React.memo(({ onBack, onNavigateToSignup }) => {
     return Object.keys(newErrors).length === 0;
   }, [formData.email, formData.password]);
 
-  // Memoized login handler
+  // Login with email verification gate
   const handleLogin = useCallback(async () => {
     if (!validateForm()) return;
-    
     setLoading(true);
-    
+
     try {
-      await signInWithEmailAndPassword(
-        auth, 
-        formData.email.trim().toLowerCase(), 
-        formData.password
-      );
-      // onAuthStateChanged will handle navigation
-    } catch (error) {
-      if (__DEV__) {
-        console.error('Login error:', error);
+      const email = normalizeEmail(formData.email);
+      const { user } = await signInWithEmailAndPassword(auth, email, formData.password);
+
+      // Ensure latest verification status
+      await user.reload();
+
+      if (user.emailVerified) {
+        // Verified → let onAuthStateChanged handle navigation
+        return;
       }
-      
+
+      // Not verified → give options
+      Alert.alert(
+        'Email not verified',
+        `The account for ${email} is not verified yet.`,
+        [
+          {
+            text: 'Use another email/Try again',
+            onPress: async () => {
+              try { await signOut(auth); } catch {}
+            }
+          },
+          {
+            text: 'Resend verification',
+            onPress: async () => {
+              try {
+                await sendEmailVerification(user);
+                Alert.alert('Verification sent', 'Check your inbox (and spam). After verifying, sign in again.');
+                try { await signOut(auth); } catch {}
+              } catch (e) {
+                Alert.alert('Resend failed', 'Please try again in a moment.');
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      if (__DEV__) console.error('Login error:', error);
+
       let errorMessage = 'Login failed. Please try again.';
-      
-      switch (error.code) {
+      switch (error?.code) {
         case 'auth/user-not-found':
+                Alert.alert('No account found with this email address.');
           errorMessage = 'No account found with this email address.';
           break;
         case 'auth/wrong-password':
+                Alert.alert('Incorrect password. Please try again.');
           errorMessage = 'Incorrect password. Please try again.';
           break;
         case 'auth/invalid-email':
+                Alert.alert('Please enter a valid email address.');
           errorMessage = 'Please enter a valid email address.';
           break;
         case 'auth/too-many-requests':
+                Alert.alert('Too many failed attempts. Please try again later.');
           errorMessage = 'Too many failed attempts. Please try again later.';
           break;
         case 'auth/network-request-failed':
+                Alert.alert('Network error. Please check your connection.');
           errorMessage = 'Network error. Please check your connection.';
           break;
         default:
+                Alert.alert('Login failed. Please try again.');
           errorMessage = 'Login failed. Please try again.';
       }
-      
-      Alert.alert("Login Failed", errorMessage);
+      Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [formData.email, formData.password, validateForm]);
+  }, [formData.email, formData.password, normalizeEmail, validateForm]);
 
-  // Memoized form update handler
+  // Form updates
   const updateFormData = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: null }));
-    }
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
   }, [errors]);
+// Memoized email handler
+  const handleEmailChange = useCallback((value) => {
+    updateFormData('email', value);
+  }, [updateFormData]);
+  // Memoized password handler
+  const handlePasswordChange = useCallback((value) => {
+    updateFormData('password', value);
+  }, [updateFormData]);
 
-  // Memoized email handler
-  const handleEmailChange = useCallback((value) => {
-    updateFormData('email', value);
-  }, [updateFormData]);
+const handleForgotPassword = useCallback(async () => {
+  const raw = formData.email || '';
+  const email = normalizeEmail(raw);
 
-  // Memoized password handler
-  const handlePasswordChange = useCallback((value) => {
-    updateFormData('password', value);
-  }, [updateFormData]);
+  // Basic validation before calling Firebase
+  if (!email) {
+    Alert.alert('Enter email', 'Please enter your email to reset your password.');
+    return;
+  }
+  if (!/\S+@\S+\.\S+/.test(email)) {
+    Alert.alert('Invalid email', 'Please enter a valid email address.');
+    return;
+  }
 
-  // Memoized dynamic styles
+  // Optional: prevent double taps by toggling loading
+  setLoading(true);
+  try {
+    await sendPasswordResetEmail(auth, email);
+    Alert.alert(
+      'Reset email sent',
+      'Check your inbox (and spam). Open the email and follow the link to create a new password.'
+    );
+  } catch (error) {
+    if (__DEV__) console.error('Forgot password error:', error);
+
+    let message = 'Could not send reset email. Please try again.';
+    switch (error?.code) {
+      case 'auth/user-not-found':
+        message = 'No account found with this email address.';
+        break;
+      case 'auth/invalid-email':
+        message = 'Please enter a valid email address.';
+        break;
+      case 'auth/too-many-requests':
+        message = 'Too many attempts. Please try again later.';
+        break;
+      case 'auth/network-request-failed':
+        message = 'Network error. Please check your connection.';
+        break;
+      default:
+        message = 'Could not send reset email. Please try again.';
+    }
+    Alert.alert('Reset failed', message);
+  } finally {
+    setLoading(false);
+  }
+}, [formData.email, normalizeEmail, setLoading]);
+
+  // Memoized style objects (unchanged)
   const containerStyle = useMemo(() => [
     styles.container,
     { backgroundColor: theme.colors.background }
@@ -143,6 +221,8 @@ const LoginScreen = React.memo(({ onBack, onNavigateToSignup }) => {
     styles.signupLink,
     { color: theme.colors.accentText }
   ], [theme.colors.accentText]);
+
+  // ... your return JSX continues here
 
   return (
     <KeyboardAvoidingView 
@@ -198,6 +278,7 @@ const LoginScreen = React.memo(({ onBack, onNavigateToSignup }) => {
 
             <TouchableOpacity 
               style={styles.forgotPassword}
+              onPress={handleForgotPassword}
               activeOpacity={0.7}
             >
               <Text style={forgotPasswordTextStyle}>

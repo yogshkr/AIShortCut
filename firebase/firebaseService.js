@@ -18,48 +18,81 @@ import { db } from './firebaseConfig';
  * Fetches and processes articles from Firestore
  * @returns {Promise<Array>} Array of processed articles
  */
+
 export const subscribeToArticles = async () => {
   try {
-    const q = query(collection(db, 'articles'));
+    // Prefer createdAt descending; if your collection uses a different timestamp field (e.g., publishedAt),
+    // change 'createdAt' below to that field name.
+    const q = query(
+      collection(db, 'articles'),
+      orderBy('createdAt', 'desc')
+    );
+
     const querySnapshot = await getDocs(q);
     const articles = [];
-    
+
     querySnapshot.forEach((docSnapshot) => {
       const docData = docSnapshot.data();
       let articleData;
-      const dataKeys = Object.keys(docData);
-      
+      const dataKeys = Object.keys(docData || {});
+
       // Handle nested JSON structure from previous incorrect storage
-      if (dataKeys.length === 1 && dataKeys[0].startsWith('{')) {
+      if (dataKeys.length === 1 && dataKeys[0]?.startsWith?.('{')) {
         try {
-          articleData = JSON.parse(dataKeys[0]);
-        } catch (parseError) {
+          articleData = JSON.parse(dataKeys);
+        } catch {
           articleData = docData;
         }
       } else {
         articleData = docData;
       }
-      
-      // Process and validate article data
+
+      // Normalize possible Firestore Timestamp or ISO/string to JS Date
+      const toDate = (val) => {
+        if (!val) return null;
+        // Firestore Timestamp has toDate()
+        if (typeof val === 'object' && typeof val.toDate === 'function') {
+          return val.toDate();
+        }
+        // ISO string or number
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
+      const createdAtDate = toDate(articleData.createdAt);
+      const updatedAtDate = toDate(articleData.updatedAt);
+      const publishDateDate = toDate(articleData.publishDate) || createdAtDate;
+
       const processedArticle = {
         id: docSnapshot.id,
         headline: articleData.headline || 'Untitled Article',
         summary: articleData.summary || 'No summary available',
         content: articleData.content || articleData.summary || 'No content available',
         author: articleData.author || 'Unknown Author',
-        publishDate: articleData.publishDate || new Date().toLocaleDateString(),
+        // keep original values but also provide normalized dates if you use them
+        publishDate: articleData.publishDate || (publishDateDate ? publishDateDate.toISOString() : new Date().toISOString()),
         readTime: articleData.readTime || '5 min read',
         imageUrl: articleData.imageUrl || 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800',
-        topics: Array.isArray(articleData.topics) ? articleData.topics : 
-                (typeof articleData.topics === 'string' ? [articleData.topics] : 
-                ['AI', 'Technology']),
-        createdAt: articleData.createdAt || new Date(),
-        updatedAt: articleData.updatedAt || new Date()
+        topics: Array.isArray(articleData.topics)
+          ? articleData.topics
+          : (typeof articleData.topics === 'string' ? [articleData.topics] : ['AI', 'Technology']),
+        createdAt: createdAtDate || new Date(),
+        updatedAt: updatedAtDate || new Date()
       };
-      
+
       articles.push(processedArticle);
     });
-    
+
+    // Safety: if some docs lack createdAt or Firestore ordering couldn't be used,
+    // ensure final client-side sort by the most reliable date (createdAt -> publishDate).
+    articles.sort((a, b) => {
+      const aDate = a.createdAt || (a.publishDate ? new Date(a.publishDate) : null);
+      const bDate = b.createdAt || (b.publishDate ? new Date(b.publishDate) : null);
+      const aTime = aDate ? aDate.getTime() : 0;
+      const bTime = bDate ? bDate.getTime() : 0;
+      return bTime - aTime; // desc
+    });
+
     return articles;
   } catch (error) {
     if (__DEV__) {
@@ -130,10 +163,12 @@ export const updateUserInteraction = async (userId, articleId, action, isAdd) =>
 };
 
 /**
- * Filters user's saved articles from all articles
+ * Filters user's saved articles from all articles and sorts by recency.
+ * - If userInteractions.savedArticles is an array of IDs: sorts by article.createdAt/publishDate desc.
+ * - If it's an object map { [articleId]: timestamp }: sorts by saved timestamp desc.
  * @param {string} userId - User ID
  * @param {Array} allArticles - All articles array
- * @returns {Promise<Array>} Saved articles
+ * @returns {Promise<Array>} Saved articles sorted by most recent
  */
 export const getUserSavedArticles = async (userId, allArticles) => {
   if (!userId || !Array.isArray(allArticles)) {
@@ -142,9 +177,70 @@ export const getUserSavedArticles = async (userId, allArticles) => {
 
   try {
     const userInteractions = await getUserInteractions(userId);
-    return allArticles.filter(article => 
-      userInteractions.savedArticles.includes(article.id)
-    );
+    if (!userInteractions) return [];
+
+    const saved = userInteractions.savedArticles || [];
+
+    // Normalize to a consistent structure:
+    // - ids: Set of saved IDs (fast lookup)
+    // - savedAtMap: if available, map of id -> Date for saved time
+    const toDate = (val) => {
+      if (!val) return null;
+      if (typeof val === 'object' && typeof val.toDate === 'function') return val.toDate(); // Firestore Timestamp
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
+    let ids = new Set();
+    let savedAtMap = null;
+
+    if (Array.isArray(saved)) {
+      // Legacy: array of IDs
+      ids = new Set(saved);
+    } else if (saved && typeof saved === 'object') {
+      // Preferred: object map { [articleId]: timestamp | true }
+      ids = new Set(Object.keys(saved));
+      savedAtMap = {};
+      for (const [id, ts] of Object.entries(saved)) {
+        // ts could be boolean true, ISO string, number, or Firestore Timestamp
+        const d = toDate(ts);
+        if (d) savedAtMap[id] = d;
+      }
+    }
+
+    // Filter only saved articles
+    const filtered = allArticles.filter((article) => ids.has(article.id));
+
+    // Decide sort key
+    const getArticleCreatedDate = (a) => {
+      // Prefer Date objects on createdAt if already normalized
+      if (a.createdAt instanceof Date) return a.createdAt;
+      // If createdAt is Firestore Timestamp
+      if (a.createdAt && typeof a.createdAt.toDate === 'function') return a.createdAt.toDate();
+      // If createdAt/publishDate are strings/numbers
+      const c = a.createdAt ? new Date(a.createdAt) : null;
+      if (c && !isNaN(c.getTime())) return c;
+      const p = a.publishDate ? new Date(a.publishDate) : null;
+      if (p && !isNaN(p.getTime())) return p;
+      return new Date(0); // fallback very old
+    };
+
+    // Sort:
+    // - If we have savedAtMap, sort by when user saved (desc)
+    // - Else sort by article's createdAt/publishDate (desc)
+    if (savedAtMap) {
+      filtered.sort((a, b) => {
+        const aSaved = savedAtMap[a.id] ? savedAtMap[a.id].getTime() : 0;
+        const bSaved = savedAtMap[b.id] ? savedAtMap[b.id].getTime() : 0;
+        if (bSaved !== aSaved) return bSaved - aSaved;
+        // tie-breaker by article recency
+        return getArticleCreatedDate(b) - getArticleCreatedDate(a);
+      });
+    } else {
+      filtered.sort((a, b) => getArticleCreatedDate(b) - getArticleCreatedDate(a));
+    }
+
+    return filtered;
   } catch (error) {
     if (__DEV__) {
       console.error('Error fetching saved articles:', error);
@@ -152,6 +248,7 @@ export const getUserSavedArticles = async (userId, allArticles) => {
     return [];
   }
 };
+
 
 /**
  * Marks article as read and updates user stats

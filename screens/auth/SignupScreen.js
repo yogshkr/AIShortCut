@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, signOut } from 'firebase/auth'; // ADDED sendEmailVerification, signOut
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebase/firebaseConfig';
 import { 
@@ -27,9 +27,9 @@ const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  // Memoized validation function
+  // Validation
   const validateForm = useCallback(() => {
-    const newErrors = {};
+    const newErrors= {};
     
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
@@ -63,30 +63,32 @@ const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
     return Object.keys(newErrors).length === 0;
   }, [formData.name, formData.email, formData.password, formData.confirmPassword]);
 
-  // Memoized signup handler
+  // UPDATED signup handler: send verification + sign out + route hint
   const handleSignup = useCallback(async () => {
     if (!validateForm()) return;
     
     setLoading(true);
-    
     try {
+      const email = formData.email.trim().toLowerCase();
+
+      // 1) Create user
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        formData.email.trim().toLowerCase(),
+        email,
         formData.password
       );
-      
       const user = userCredential.user;
-      
-      // Update user profile with name
-      await updateProfile(user, {
-        displayName: formData.name.trim(),
-      });
-      
-      // Create user document in Firestore with better structure
+
+      // 2) Update profile with name (optional but nice)
+      const displayName = formData.name.trim();
+      if (displayName) {
+        await updateProfile(user, { displayName });
+      }
+
+      // 3) Create Firestore user doc (non-sensitive defaults)
       await setDoc(doc(db, 'users', user.uid), {
-        name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
+        name: displayName,
+        email,
         likedArticles: [],
         savedArticles: [],
         readArticles: [],
@@ -105,20 +107,39 @@ const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
         },
         readingProgress: {}
       });
-      
+
+      // 4) Send verification email
+      await sendEmailVerification(user);
+
+      // 5) Sign out to prevent unverified access
+      await signOut(auth);
+
+      // 6) Tell user and provide next steps
       Alert.alert(
-        "🎉 Account Created!",
-        `Welcome to AI ShortCut, ${formData.name.trim()}! Your account has been created successfully.`
+        'Verify your email',
+        `We sent a verification link to ${email}. Open that email and tap the link, then Sign In.`,
+        [
+          { text: 'Resend', onPress: async () => {
+              try {
+                // Attempt to sign back in silently isn't possible here;
+                // sendEmailVerification requires a currentUser. Since we signed out,
+                // we can instead prompt user to login and use your Verify screen to resend.
+                // Simpler path: Just tell them to check spam/promotions and try Sign In.
+                Alert.alert('Note', 'Please check spam/promotions. You can also use "Resend verification" from the Verify screen after signing in.');
+              } catch (err) {
+                Alert.alert('Resend failed', 'Please sign in and use the resend option on the Verify screen.');
+              }
+            } 
+          },
+          { text: 'Go to Sign In', onPress: onNavigateToLogin }
+        ]
       );
-      
+
     } catch (error) {
-      if (__DEV__) {
-        console.error('Signup error:', error);
-      }
-      
+      if (__DEV__) console.error('Signup error:', error);
+
       let errorMessage = 'Account creation failed. Please try again.';
-      
-      switch (error.code) {
+      switch (error?.code) {
         case 'auth/email-already-in-use':
           errorMessage = 'An account with this email already exists.';
           break;
@@ -137,14 +158,13 @@ const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
         default:
           errorMessage = 'Account creation failed. Please try again.';
       }
-      
-      Alert.alert("Signup Failed", errorMessage);
+      Alert.alert('Signup Failed', errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [formData.name, formData.email, formData.password, validateForm]);
+  }, [formData.name, formData.email, formData.password, validateForm, onNavigateToLogin]);
 
-  // Memoized form update handler
+  // Form updates
   const updateFormData = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -152,7 +172,6 @@ const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
     }
   }, [errors]);
 
-  // Memoized field handlers
   const handleNameChange = useCallback((value) => {
     updateFormData('name', value);
   }, [updateFormData]);
@@ -169,7 +188,7 @@ const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
     updateFormData('confirmPassword', value);
   }, [updateFormData]);
 
-  // Memoized dynamic styles
+  // Styles (unchanged)
   const containerStyle = useMemo(() => [
     styles.container,
     { backgroundColor: theme.colors.background }
@@ -287,7 +306,6 @@ const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
               onPress={handleSignup}
               loading={loading}
               variant="primary"
-              // disabled={loading}
             />
 
             <View style={styles.loginPrompt}>
@@ -326,78 +344,24 @@ const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
 SignupScreen.displayName = 'SignupScreen';
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    paddingTop: 60,
-    paddingHorizontal: 30,
-    paddingBottom: 20,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    padding: 8,
-    marginBottom: 20,
-  },
-  backIcon: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  titleContainer: {
-    alignItems: 'center',
-  },
-  logoIcon: {
-    fontSize: 60,
-    marginBottom: 15,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 30,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 40,
-  },
-  form: {
-    marginBottom: 30,
-  },
-  actions: {
-    marginBottom: 30,
-  },
-  loginPrompt: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  loginText: {
-    fontSize: 16,
-  },
-  loginLink: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  terms: {
-    paddingBottom: 40,
-    paddingHorizontal: 10,
-  },
-  termsText: {
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
-  termsLink: {
-    fontWeight: '600',
-  },
+  container: { flex: 1 },
+  header: { paddingTop: 60, paddingHorizontal: 30, paddingBottom: 20 },
+  backButton: { alignSelf: 'flex-start', padding: 8, marginBottom: 20 },
+  backIcon: { fontSize: 28, fontWeight: 'bold' },
+  titleContainer: { alignItems: 'center' },
+  logoIcon: { fontSize: 60, marginBottom: 15 },
+  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 8 },
+  subtitle: { fontSize: 16, textAlign: 'center' },
+  content: { flex: 1, paddingHorizontal: 30 },
+  scrollContent: { flexGrow: 1, paddingBottom: 40 },
+  form: { marginBottom: 30 },
+  actions: { marginBottom: 30 },
+  loginPrompt: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 20 },
+  loginText: { fontSize: 16 },
+  loginLink: { fontSize: 16, fontWeight: 'bold' },
+  terms: { paddingBottom: 40, paddingHorizontal: 10 },
+  termsText: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  termsLink: { fontWeight: '600' },
 });
 
 export default SignupScreen;
