@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
 import { useTheme } from '../App';
 
 const Header = React.memo(({ currentScreen = 'Home', currentUser, onLogout }) => {
@@ -96,7 +96,7 @@ const handleNotificationPress = useCallback(() => {
     <View style={headerStyle}>
       <View style={styles.leftSection}>
         <View style={styles.titleRow}>
-          <Text style={styles.appIcon}>🤖</Text>
+          <Image source={require("E:/portfolio-projects/AIShortCut/assets/AIShortCut_logo-removebg.png")} style={styles.logoImage} resizeMode="contain" />
           <View style={styles.titleContainer}>
             <Text style={titleStyle}>
               {screenTitle}
@@ -214,6 +214,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
     opacity: 0.8,
   },
+  logoImage: {
+  width: 50,
+  height: 50,
+  // marginBottom: 15,
+},
 });
 
 export default Header;

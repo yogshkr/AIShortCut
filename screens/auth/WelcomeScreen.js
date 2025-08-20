@@ -3,7 +3,7 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  TouchableOpacity
+  TouchableOpacity, Image
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../../App';
@@ -84,10 +84,10 @@ const WelcomeScreen = React.memo(({ onNavigateToLogin, onNavigateToSignup }) => 
       
       <View style={styles.heroSection}>
         <View style={styles.logoContainer}>
-          <Text style={styles.logoIcon}>🤖</Text>
-          <Text style={logoTextStyle}>
+          <Image source={require("E:/portfolio-projects/AIShortCut/assets/AIShortCut_logo-removebg.png")} style={styles.logoImage} resizeMode="contain" />
+          {/* <Text style={logoTextStyle}>
             AI ShortCut
-          </Text>
+          </Text> */}
         </View>
         
         <Text style={taglineStyle}>
@@ -234,6 +234,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
   },
+  logoImage: {
+  width: 180,
+  height: 180,
+  // marginBottom: 15,
+},
+
 });
 
 export default WelcomeScreen;

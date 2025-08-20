@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
-  Platform 
+  Platform, Image
 } from 'react-native';
 import { signInWithEmailAndPassword, sendEmailVerification, signOut, sendPasswordResetEmail  } from 'firebase/auth';
 import { auth } from '../../firebase/firebaseConfig';
@@ -240,7 +240,7 @@ const handleForgotPassword = useCallback(async () => {
           </TouchableOpacity>
           
           <View style={styles.titleContainer}>
-            <Text style={styles.logoIcon}>🤖</Text>
+            <Image source={require("E:/portfolio-projects/AIShortCut/assets/AIShortCut_logo-removebg.png")} style={styles.logoImage} resizeMode="contain" />
             <Text style={titleStyle}>
               Welcome Back
             </Text>
@@ -389,6 +389,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  logoImage: {
+  width: 140,
+  height: 140,
+  // marginBottom: 15,
+},
 });
 
 export default LoginScreen;

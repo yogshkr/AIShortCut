@@ -260,6 +260,44 @@ const fetchUserStats = useCallback(async () => {
     }
   ], [theme.isDark]);
 
+  const showTerms = useCallback(() => {
+Alert.alert(
+'Terms of Service',
+[
+'- Use: You must be 13+ and provide accurate information.',
+'- Account: Keep credentials secure; do not share your account.',
+'- Content & License: Limited, non-transferable license; no reverse engineering or abuse.',
+'- Payments: If purchases/subscriptions exist, Google Play Billing terms apply; local law may require refunds/disclosures.',
+'- Prohibited: Spam, fraud, harassment, illegal content/activity.',
+'- Data: Your use is governed by our Privacy Policy.',
+'- Termination: Accounts may be suspended/terminated for policy violations.',
+'- Liability: Service “as is”; liability limited to the extent permitted by law.',
+'- Changes: We may update these terms; continued use means acceptance.',
+].join('\n'),
+[{ text: 'Close', style: 'cancel' }],
+{ cancelable: true }
+);
+}, []);
+
+const showPrivacy = useCallback(() => {
+Alert.alert(
+'Privacy Policy',
+[
+'- Data We Collect: Name, email, password (hashed via Firebase Auth), usage/device data.',
+'- Purpose: Account creation, security, app functionality, abuse prevention, improvements, legal compliance.',
+'- Storage & Security: Managed with Firebase; reasonable technical and organizational measures.',
+'- Sharing: Not sold; may share with service providers (e.g., Firebase) and when required by law.',
+'- Retention: Kept only as long as necessary or legally required.',
+'- Your Choices: Access/update/delete; request account deletion via in-app settings or support.',
+'- Children: Not for users under 13.',
+'- International Transfers: May be processed outside your country per applicable law.',
+'- Changes: We may update; material changes highlighted in-app.',
+].join('\n'),
+[{ text: 'Close', style: 'cancel' }],
+{ cancelable: true }
+);
+}, []);
+
   return (
     <View style={containerStyle}>
       <Header currentScreen="Profile" />
@@ -382,6 +420,27 @@ const fetchUserStats = useCallback(async () => {
           >
             <Text style={styles.actionIcon}>📤</Text>
             <Text style={actionTextStyle}>Share App</Text>
+            <Text style={arrowStyle}>→</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={actionItemStyle}
+            onPress={showTerms}
+            activeOpacity={0.7}
+            >
+              
+            <Text style={styles.actionIcon}>📄</Text>
+            <Text style={actionTextStyle}>Terms of Service</Text>
+            <Text style={arrowStyle}>→</Text>
+          </TouchableOpacity>
+              
+          <TouchableOpacity
+            style={actionItemStyle}
+            onPress={showPrivacy}
+            activeOpacity={0.7}
+              >
+            <Text style={styles.actionIcon}>🔒</Text>
+            <Text style={actionTextStyle}>Privacy Policy</Text>
             <Text style={arrowStyle}>→</Text>
           </TouchableOpacity>
         </View>

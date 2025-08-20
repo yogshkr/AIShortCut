@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
-  Platform 
+  Platform, Image
 } from 'react-native';
 import { useTheme } from '../../App';
 import AuthInput from '../../components/auth/AuthInput';
@@ -229,6 +229,48 @@ const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
     { color: theme.colors.accentText }
   ], [theme.colors.accentText]);
 
+  const showTerms = useCallback(() => {
+Alert.alert(
+'Terms of Service',
+[
+'- Use: You must be 13+ and provide accurate information.',
+'- Account: Keep credentials secure; do not share your account.',
+'- Content & License: We grant you a limited, non-transferable license to use the app. Do not reverse engineer, abuse, or misuse the service.',
+'- Payments: If any in-app purchases/subscriptions are offered, Google Play Billing terms apply and local laws may require disclosures/refunds per policy.',
+'- Prohibited: Spam, fraud, harassment, illegal content/activity.',
+'- Data: Your use is also governed by our Privacy Policy.',
+'- Termination: We may suspend/terminate accounts for policy violations.',
+'- Liability: Service provided “as is”; to the maximum extent permitted by law, we limit liability for indirect or consequential damages.',
+'- Changes: We may update these terms; continued use means acceptance.',
+].join('\n'),
+[
+{ text: 'Close', style: 'cancel' },
+],
+{ cancelable: true }
+);
+}, []);
+
+const showPrivacy = useCallback(() => {
+Alert.alert(
+'Privacy Policy',
+[
+'- Data We Collect: Name, email, password (hashed by Firebase Auth), usage and device data (as described in our full policy).',
+'- Purpose: To create and secure your account, provide features, prevent abuse, improve the app, and comply with legal obligations.',
+'- Storage & Security: Auth managed by Firebase; we apply reasonable technical & organizational measures.',
+'- Sharing: We do not sell personal data. We may share with service providers (e.g., Firebase) and as required by law.',
+'- Retention: We keep data only as long as needed for the purposes above or as required by law.',
+'- Your Choices: Access, update, or delete your data; request account deletion from in-app settings or support.',
+'- Children: Not intended for users under 13.',
+'- International Transfers: Data may be processed outside your country consistent with applicable law.',
+'- Changes: We may update this policy; material changes will be highlighted in-app.',
+].join('\n'),
+[
+{ text: 'Close', style: 'cancel' },
+],
+{ cancelable: true }
+);
+}, []);
+
   return (
     <KeyboardAvoidingView 
       style={{ flex: 1 }} 
@@ -245,7 +287,7 @@ const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
           </TouchableOpacity>
           
           <View style={styles.titleContainer}>
-            <Text style={styles.logoIcon}>🤖</Text>
+            <Image source={require("E:/portfolio-projects/AIShortCut/assets/AIShortCut_logo-removebg.png")} style={styles.logoImage} resizeMode="contain" />
             <Text style={titleStyle}>
               Join AI ShortCut
             </Text>
@@ -323,18 +365,17 @@ const SignupScreen = React.memo(({ onBack, onNavigateToLogin }) => {
             </View>
           </View>
 
-          <View style={styles.terms}>
-            <Text style={termsTextStyle}>
-              By creating an account, you agree to our{' '}
-              <Text style={termsLinkStyle}>
-                Terms of Service
-              </Text>
-              {' '}and{' '}
-              <Text style={termsLinkStyle}>
-                Privacy Policy
-              </Text>
-            </Text>
-          </View>
+          <View style={[styles.terms, { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }]}>
+<Text style={termsTextStyle}>By creating an account, you agree to our </Text>
+<TouchableOpacity onPress={showTerms} activeOpacity={0.7}>
+<Text style={[termsTextStyle, termsLinkStyle]}>Terms of Service</Text>
+</TouchableOpacity>
+<Text style={termsTextStyle}> and </Text>
+<TouchableOpacity onPress={showPrivacy} activeOpacity={0.7}>
+<Text style={[termsTextStyle, termsLinkStyle]}>Privacy Policy</Text>
+</TouchableOpacity>
+<Text style={termsTextStyle}>.</Text>
+</View>
         </ScrollView>
       </View>
     </KeyboardAvoidingView>
@@ -362,6 +403,11 @@ const styles = StyleSheet.create({
   terms: { paddingBottom: 40, paddingHorizontal: 10 },
   termsText: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
   termsLink: { fontWeight: '600' },
+  logoImage: {
+  width: 110,
+  height: 110,
+  // marginBottom: 15,
+},
 });
 
 export default SignupScreen;
