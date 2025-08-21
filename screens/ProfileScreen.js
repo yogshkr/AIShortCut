@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking  } from 'react-native';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import Header from '../components/Header';
@@ -260,44 +260,43 @@ const fetchUserStats = useCallback(async () => {
     }
   ], [theme.isDark]);
 
-  const showTerms = useCallback(() => {
+const handleDeleteAccountInfo = useCallback(() => {
 Alert.alert(
-'Terms of Service',
+'Request Account Deletion',
+'To delete your account and associated data, please email us from your registered address at admin@copyassignment.com with the subject: "AIShortCut Account Deletion".\n\nWe will verify your request and process deletion as soon as possible.',
 [
-'- Use: You must be 13+ and provide accurate information.',
-'- Account: Keep credentials secure; do not share your account.',
-'- Content & License: Limited, non-transferable license; no reverse engineering or abuse.',
-'- Payments: If purchases/subscriptions exist, Google Play Billing terms apply; local law may require refunds/disclosures.',
-'- Prohibited: Spam, fraud, harassment, illegal content/activity.',
-'- Data: Your use is governed by our Privacy Policy.',
-'- Termination: Accounts may be suspended/terminated for policy violations.',
-'- Liability: Service “as is”; liability limited to the extent permitted by law.',
-'- Changes: We may update these terms; continued use means acceptance.',
-].join('\n'),
-[{ text: 'Close', style: 'cancel' }],
+{ text: 'Cancel', style: 'cancel' },
+{
+text: 'Email us',
+onPress: async () => {
+const subject = encodeURIComponent('AIShortCut Account Deletion');
+
+const body = encodeURIComponent(
+`Hello,
+
+I would like to request deletion of my AIShortCut account.
+
+Registered email: ${currentUser?.email || ''}
+
+Thank you.`
+);
+const mailto = 'mailto:admin@copyassignment.com?subject=' + subject + '&body=' + body;
+try {
+const supported = await Linking.canOpenURL(mailto);
+if (supported) {
+await Linking.openURL(mailto);
+} else {
+Alert.alert('Unable to open email app', 'Please email admin@copyassignment.com from your registered address.');
+}
+} catch {
+Alert.alert('Unable to open email app', 'Please email admin@copyassignment.com from your registered address.');
+}
+}
+}
+],
 { cancelable: true }
 );
-}, []);
-
-const showPrivacy = useCallback(() => {
-Alert.alert(
-'Privacy Policy',
-[
-'- Data We Collect: Name, email, password (hashed via Firebase Auth), usage/device data.',
-'- Purpose: Account creation, security, app functionality, abuse prevention, improvements, legal compliance.',
-'- Storage & Security: Managed with Firebase; reasonable technical and organizational measures.',
-'- Sharing: Not sold; may share with service providers (e.g., Firebase) and when required by law.',
-'- Retention: Kept only as long as necessary or legally required.',
-'- Your Choices: Access/update/delete; request account deletion via in-app settings or support.',
-'- Children: Not for users under 13.',
-'- International Transfers: May be processed outside your country per applicable law.',
-'- Changes: We may update; material changes highlighted in-app.',
-].join('\n'),
-[{ text: 'Close', style: 'cancel' }],
-{ cancelable: true }
-);
-}, []);
-
+}, [currentUser?.email]);
   return (
     <View style={containerStyle}>
       <Header currentScreen="Profile" />
@@ -425,7 +424,7 @@ Alert.alert(
 
           <TouchableOpacity
             style={actionItemStyle}
-            onPress={showTerms}
+            onPress={() => Linking.openURL('https://copyassignment.com/terms-of-service-aishortcut/')}
             activeOpacity={0.7}
             >
               
@@ -436,12 +435,24 @@ Alert.alert(
               
           <TouchableOpacity
             style={actionItemStyle}
-            onPress={showPrivacy}
+            onPress={() => Linking.openURL('https://copyassignment.com/privacy-policy-aishortcut/')}
             activeOpacity={0.7}
               >
             <Text style={styles.actionIcon}>🔒</Text>
             <Text style={actionTextStyle}>Privacy Policy</Text>
             <Text style={arrowStyle}>→</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={logoutItemStyle}
+            onPress={handleDeleteAccountInfo}
+            activeOpacity={0.7}
+>
+            <Text style={styles.logoutIcon}>🗑️</Text>
+            <Text style={[styles.logoutText, { color: theme.isDark ? '#f87171' : '#b91c1c' }]}>
+            Request Account Deletion
+            </Text>
+            <Text style={[styles.arrow, { color: theme.isDark ? '#f87171' : '#b91c1c' }]}>→</Text>
           </TouchableOpacity>
         </View>
 

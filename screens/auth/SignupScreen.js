@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
-  Platform, Image
+  Platform, Image, Linking
 } from 'react-native';
 import { useTheme } from '../../App';
 import AuthInput from '../../components/auth/AuthInput';
@@ -367,11 +367,13 @@ Alert.alert(
 
           <View style={[styles.terms, { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }]}>
 <Text style={termsTextStyle}>By creating an account, you agree to our </Text>
-<TouchableOpacity onPress={showTerms} activeOpacity={0.7}>
+<TouchableOpacity 
+            onPress={() => Linking.openURL('https://copyassignment.com/terms-of-service-aishortcut/')} activeOpacity={0.7}>
 <Text style={[termsTextStyle, termsLinkStyle]}>Terms of Service</Text>
 </TouchableOpacity>
 <Text style={termsTextStyle}> and </Text>
-<TouchableOpacity onPress={showPrivacy} activeOpacity={0.7}>
+<TouchableOpacity 
+            onPress={() => Linking.openURL('https://copyassignment.com/privacy-policy-aishortcut/')} activeOpacity={0.7}>
 <Text style={[termsTextStyle, termsLinkStyle]}>Privacy Policy</Text>
 </TouchableOpacity>
 <Text style={termsTextStyle}>.</Text>

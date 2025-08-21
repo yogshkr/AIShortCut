@@ -51,8 +51,9 @@ messagingSenderId: process.env.MESSAGING_SENDER_ID,
 appId: process.env.APP_ID,
 measurementId: process.env.MEASUREMENT_ID,
 policyUrls: {
-privacy: "https://aishortcut.pythonhub.in/privacy",
-terms: "https://aishortcut.pythonhub.in/terms"
+privacy: "https://copyassignment.com/privacy-policy-aishortcut/",
+terms: "https://copyassignment.com/terms-of-service-aishortcut/",
+supportEmail: "admin@copyassignment.com"
 }
 }
 }
