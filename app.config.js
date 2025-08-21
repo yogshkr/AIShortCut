@@ -54,7 +54,10 @@ policyUrls: {
 privacy: "https://copyassignment.com/privacy-policy-aishortcut/",
 terms: "https://copyassignment.com/terms-of-service-aishortcut/",
 supportEmail: "admin@copyassignment.com"
-}
+},
+eas: {
+        projectId: "c5b28119-e389-45a6-a311-41340f510307"
+      }
 }
 }
 };
