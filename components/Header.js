@@ -96,7 +96,7 @@ const handleNotificationPress = useCallback(() => {
     <View style={headerStyle}>
       <View style={styles.leftSection}>
         <View style={styles.titleRow}>
-          <Image source={require("../../assets/AIShortCut_logo-removebg.png")} style={styles.logoImage} resizeMode="contain" />
+          <Image source={require("../assets/AIShortCut_logo-removebg.png")} style={styles.logoImage} resizeMode="contain" />
           <View style={styles.titleContainer}>
             <Text style={titleStyle}>
               {screenTitle}
