@@ -240,7 +240,7 @@ const handleForgotPassword = useCallback(async () => {
           </TouchableOpacity>
           
           <View style={styles.titleContainer}>
-            <Image source={require("E:/portfolio-projects/AIShortCut/assets/AIShortCut_logo-removebg.png")} style={styles.logoImage} resizeMode="contain" />
+            <Image source={require("../../assets/AIShortCut_logo-removebg.png")} style={styles.logoImage} resizeMode="contain" />
             <Text style={titleStyle}>
               Welcome Back
             </Text>
