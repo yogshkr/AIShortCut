@@ -69,10 +69,6 @@ Users can sign up, personalize their news preferences, save interesting articles
    ```
    npm install
    ```
-   or
-   ```
-   flutter pub get
-   ```
 3. Setup environment variables:
    - API keys
    - Backend config (Firebase/Supabase)
@@ -114,7 +110,7 @@ Contributions are welcome!
 ---
 
 ## 📄 License
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** - see the [LICENSE](https://opensource.org/license/mit) file for details.
 
 ---
 
