@@ -10,7 +10,7 @@ icon: './assets/AIShortCut_logo-removebg.png',
 userInterfaceStyle: 'automatic',
 newArchEnabled: true,
 splash: {
-image: './assets/splash-icon.png',
+image: './assets/AIShortCut_logo-removebg.png',
 resizeMode: 'contain',
 backgroundColor: '#ffffff'
 },

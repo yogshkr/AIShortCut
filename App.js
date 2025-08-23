@@ -4,7 +4,7 @@ import { View, Appearance, Alert } from 'react-native';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase/firebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // Import main app screens
 import HomeScreen from './screens/HomeScreen';
@@ -273,13 +273,13 @@ export default function App() {
   }, [currentScreen, selectedArticle, currentUser, handleMainNavigation, handleArticleDetail, handleLogout, handleBackFromArticle, handleFullArticleNavigation, handleBackFromFullArticle]);
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider><SafeAreaView style={{flex:1, backgroundColor:isDarkMode ? '#0f172a' : '#f1f5f9',}} edges={['top', 'bottom']}>
       <ThemeContext.Provider value={theme}>
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
           <StatusBar style={isDarkMode ? "light" : "dark"} />
           {isAuthenticated ? renderMainAppScreens() : renderAuthScreens()}
         </View>
-      </ThemeContext.Provider>
+      </ThemeContext.Provider></SafeAreaView>
     </SafeAreaProvider>
   );
 }

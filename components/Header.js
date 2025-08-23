@@ -148,7 +148,7 @@ Header.displayName = 'Header';
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 45,
+    paddingTop: 15,
     paddingBottom: 15,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 16,

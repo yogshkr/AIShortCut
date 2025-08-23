@@ -249,7 +249,7 @@ const FullArticleScreen = React.memo(({ article, onBack, currentUser }) => {
     {
       backgroundColor: theme.colors.cardBackground,
       borderTopColor: theme.colors.border,
-      paddingBottom: insets.bottom + 15,
+      // paddingBottom: insets.bottom + 15,
     }
   ], [theme.colors.cardBackground, theme.colors.border, insets.bottom]);
 
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
+    paddingTop: 15,
     paddingBottom: 15,
     paddingHorizontal: 20,
   },

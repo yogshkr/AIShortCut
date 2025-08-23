@@ -104,13 +104,13 @@ BottomMenu.displayName = 'BottomMenu';
 
 const styles = StyleSheet.create({
   bottomMenu: {
-    borderTopWidth: 1,
-    paddingBottom: 25,
-    paddingTop: 10,
+    // borderTopWidth: 1,
+    paddingBottom: 5,
+    paddingTop: 5,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 8,
+    // elevation: 8,
   },
   menuContainer: {
     flexDirection: 'row',
