@@ -1,6 +1,6 @@
-import React, { useState, useEffect, createContext, useContext, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, createContext, useContext, useCallback, useMemo, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, Appearance, Alert } from 'react-native';
+import { View, Appearance, Alert, Platform, BackHandler, ToastAndroid, ActivityIndicator } from 'react-native';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase/firebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,7 +8,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // Import main app screens
 import HomeScreen from './screens/HomeScreen';
-import ProfileScreen from './screens/ProfileScreen';  
+import ProfileScreen from './screens/ProfileScreen';
 import SavedScreen from './screens/SavedScreen';
 import FullArticleScreen from './screens/FullArticleScreen';
 import AIShortCut from './screens/AIShortCut';
@@ -19,7 +19,7 @@ import LoginScreen from './screens/auth/LoginScreen';
 import SignupScreen from './screens/auth/SignupScreen';
 
 // Create Theme Context
-const ThemeContext = createContext();
+const ThemeContext = createContext(undefined);
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);
@@ -39,7 +39,7 @@ export default function App() {
   // Main app navigation state
   const [currentScreen, setCurrentScreen] = useState('Home');
   const [selectedArticle, setSelectedArticle] = useState(null);
-  
+
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSystemPreference, setIsSystemPreference] = useState(true);
@@ -79,7 +79,7 @@ export default function App() {
     }
   }), [isDarkMode, isSystemPreference]);
 
-  // Optimized useEffect with proper cleanup
+  // System theme + Firebase auth listener
   useEffect(() => {
     const systemColorScheme = Appearance.getColorScheme();
     setIsDarkMode(systemColorScheme === 'dark');
@@ -96,19 +96,28 @@ export default function App() {
           const userData = {
             uid: user.uid,
             email: user.email,
-            name: user.displayName || user.email.split('@')[0],
+            name: user.displayName || (user.email ? user.email.split('@')[0] : 'User'),
           };
           setCurrentUser(userData);
           setIsAuthenticated(true);
           await AsyncStorage.setItem('currentUser', JSON.stringify(userData));
+
+          // Ensure main app starts from a clean root
+          setCurrentScreen('Home');
+          setSelectedArticle(null);
         } else {
           setCurrentUser(null);
           setIsAuthenticated(false);
-          setAuthScreen('Welcome');
           await AsyncStorage.removeItem('currentUser');
+
+          // Ensure auth flow starts from Welcome
+          setAuthScreen('Welcome');
+          // Clear any residual app state
+          setCurrentScreen('Home');
+          setSelectedArticle(null);
         }
       } catch (error) {
-        // Silent error handling for production
+        // Silent error handling; consider logging in dev builds
       } finally {
         setLoading(false);
       }
@@ -120,21 +129,22 @@ export default function App() {
     };
   }, [isSystemPreference]);
 
-  // Optimized navigation handlers with useCallback
+  // Auth flow navigation (callbacks should NOT flip isAuthenticated or force Home)
   const handleAuthNavigation = useCallback((screenName) => {
     setAuthScreen(screenName);
   }, []);
 
   const handleLoginSuccess = useCallback((userData) => {
-    setCurrentUser(userData);
-    setIsAuthenticated(true);
-    setCurrentScreen('Home');
+    // Optional: update local user immediately for UI; Firebase listener will flip isAuthenticated
+    setCurrentUser(userData ?? null);
+    // Do NOT setIsAuthenticated(true)
+    // Do NOT setCurrentScreen('Home')
   }, []);
 
   const handleSignupSuccess = useCallback((userData) => {
-    setCurrentUser(userData);
-    setIsAuthenticated(true);
-    setCurrentScreen('Home');
+    setCurrentUser(userData ?? null);
+    // Do NOT setIsAuthenticated(true)
+    // Do NOT setCurrentScreen('Home')
   }, []);
 
   const handleLogout = useCallback(async () => {
@@ -145,6 +155,7 @@ export default function App() {
     }
   }, []);
 
+  // Main app navigation
   const handleMainNavigation = useCallback((screenName) => {
     setCurrentScreen(screenName);
     setSelectedArticle(null);
@@ -168,19 +179,19 @@ export default function App() {
     setCurrentScreen('FullArticle');
   }, []);
 
-  // Memoized authentication screens renderer
+  // Render auth branch
   const renderAuthScreens = useCallback(() => {
-    switch(authScreen) {
+    switch (authScreen) {
       case 'Welcome':
         return (
-          <WelcomeScreen 
+          <WelcomeScreen
             onNavigateToLogin={() => handleAuthNavigation('Login')}
             onNavigateToSignup={() => handleAuthNavigation('Signup')}
           />
         );
       case 'Login':
         return (
-          <LoginScreen 
+          <LoginScreen
             onBack={() => handleAuthNavigation('Welcome')}
             onNavigateToSignup={() => handleAuthNavigation('Signup')}
             onLoginSuccess={handleLoginSuccess}
@@ -188,7 +199,7 @@ export default function App() {
         );
       case 'Signup':
         return (
-          <SignupScreen 
+          <SignupScreen
             onBack={() => handleAuthNavigation('Welcome')}
             onNavigateToLogin={() => handleAuthNavigation('Login')}
             onSignupSuccess={handleSignupSuccess}
@@ -196,7 +207,7 @@ export default function App() {
         );
       default:
         return (
-          <WelcomeScreen 
+          <WelcomeScreen
             onNavigateToLogin={() => handleAuthNavigation('Login')}
             onNavigateToSignup={() => handleAuthNavigation('Signup')}
           />
@@ -204,7 +215,7 @@ export default function App() {
     }
   }, [authScreen, handleAuthNavigation, handleLoginSuccess, handleSignupSuccess]);
 
-  // Memoized main app screens renderer
+  // Render main app branch
   const renderMainAppScreens = useCallback(() => {
     if (currentScreen === 'ArticleDetail' && selectedArticle) {
       return (
@@ -229,57 +240,136 @@ export default function App() {
       );
     }
 
-    switch(currentScreen) {
+    switch (currentScreen) {
       case 'Home':
         return (
-          <HomeScreen 
+          <HomeScreen
             onNavigate={handleMainNavigation}
             onArticleDetail={handleArticleDetail}
             currentUser={currentUser}
             onLogout={handleLogout}
-            key="home" 
+            key="home"
           />
         );
       case 'Profile':
         return (
-          <ProfileScreen 
+          <ProfileScreen
             onNavigate={handleMainNavigation}
             currentUser={currentUser}
             onLogout={handleLogout}
-            key="profile" 
+            key="profile"
           />
         );
       case 'Saved':
         return (
-          <SavedScreen 
+          <SavedScreen
             onNavigate={handleMainNavigation}
             onArticleDetail={handleArticleDetail}
             currentUser={currentUser}
             onLogout={handleLogout}
-            key="saved" 
+            key="saved"
           />
         );
       default:
         return (
-          <HomeScreen 
+          <HomeScreen
             onNavigate={handleMainNavigation}
             onArticleDetail={handleArticleDetail}
             currentUser={currentUser}
             onLogout={handleLogout}
-            key="home-default" 
+            key="home-default"
           />
         );
     }
-  }, [currentScreen, selectedArticle, currentUser, handleMainNavigation, handleArticleDetail, handleLogout, handleBackFromArticle, handleFullArticleNavigation, handleBackFromFullArticle]);
+  }, [
+    currentScreen,
+    selectedArticle,
+    currentUser,
+    handleMainNavigation,
+    handleArticleDetail,
+    handleLogout,
+    handleBackFromArticle,
+    handleFullArticleNavigation,
+    handleBackFromFullArticle,
+  ]);
+
+  // ANDROID BACK HANDLER: pop in-app "stack" first; double-press exit on root
+  const lastBackPressRef = useRef(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const onBackPress = () => {
+      // Authenticated branch
+      if (isAuthenticated) {
+        if (currentScreen === 'FullArticle' && selectedArticle) {
+          setCurrentScreen('ArticleDetail');
+          return true;
+        }
+        if (currentScreen === 'ArticleDetail' && selectedArticle) {
+          setSelectedArticle(null);
+          setCurrentScreen('Home');
+          return true;
+        }
+        if (currentScreen === 'Profile' || currentScreen === 'Saved') {
+          setCurrentScreen('Home');
+          return true;
+        }
+        if (currentScreen === 'Home' && !selectedArticle) {
+          const now = Date.now();
+          if (now - lastBackPressRef.current < 1500) {
+            return false; // allow system to exit
+          }
+          lastBackPressRef.current = now;
+          ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+          return true; // consume first press
+        }
+        return false;
+      }
+
+      // Unauthenticated branch
+      if (!isAuthenticated) {
+        if (authScreen === 'Login' || authScreen === 'Signup') {
+          setAuthScreen('Welcome');
+          return true;
+        }
+        if (authScreen === 'Welcome') {
+          const now = Date.now();
+          if (now - lastBackPressRef.current < 1500) {
+            return false; // exit app
+          }
+          lastBackPressRef.current = now;
+          ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [isAuthenticated, currentScreen, authScreen, selectedArticle]);
+
+  // Loading guard: wait for Firebase to resolve auth status to avoid UI races
+  if (loading) {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDarkMode ? '#0f172a' : '#f1f5f9' }}>
+          <ActivityIndicator size="large" color={isDarkMode ? '#60a5fa' : '#2563eb'} />
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
-    <SafeAreaProvider><SafeAreaView style={{flex:1, backgroundColor:isDarkMode ? '#0f172a' : '#f1f5f9',}} edges={['top', 'bottom']}>
-      <ThemeContext.Provider value={theme}>
-        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-          <StatusBar style={isDarkMode ? "light" : "dark"} />
-          {isAuthenticated ? renderMainAppScreens() : renderAuthScreens()}
-        </View>
-      </ThemeContext.Provider></SafeAreaView>
+    <SafeAreaProvider>
+      <SafeAreaView style={{flex:1, backgroundColor:isDarkMode ? '#0f172a' : '#f1f5f9'}} edges={['top', 'bottom']}>
+        <ThemeContext.Provider value={theme}>
+          <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+            <StatusBar style={isDarkMode ? "light" : "dark"} />
+            {isAuthenticated ? renderMainAppScreens() : renderAuthScreens()}
+          </View>
+        </ThemeContext.Provider>
+      </SafeAreaView>
     </SafeAreaProvider>
   );
 }

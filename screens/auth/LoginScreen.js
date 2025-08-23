@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: 60,
+    // paddingTop: 60,
     paddingHorizontal: 30,
     paddingBottom: 30,
   },
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     flex: 1,
-    justifyContent: 'flex-end',
+    // justifyContent: 'flex-end',
   },
   signupPrompt: {
     flexDirection: 'row',

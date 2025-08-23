@@ -388,8 +388,14 @@ SignupScreen.displayName = 'SignupScreen';
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingTop: 60, paddingHorizontal: 30, paddingBottom: 20 },
-  backButton: { alignSelf: 'flex-start', padding: 8, marginBottom: 20 },
+  header: { 
+    // paddingTop: 60, 
+    paddingHorizontal: 30, 
+    // paddingBottom: 20 
+    paddingBottom: 10,},
+  backButton: { alignSelf: 'flex-start', padding: 8, 
+    marginBottom: 10
+   },
   backIcon: { fontSize: 28, fontWeight: 'bold' },
   titleContainer: { alignItems: 'center' },
   logoIcon: { fontSize: 60, marginBottom: 15 },

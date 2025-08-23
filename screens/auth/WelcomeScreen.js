@@ -145,17 +145,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 30,
-    paddingTop: 60,
+    // paddingTop: 60,
   },
   heroSection: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 40,
+    paddingBottom: 25,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    // marginBottom: 30,
   },
   logoIcon: {
     fontSize: 80,
