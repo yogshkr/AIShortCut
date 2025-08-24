@@ -84,7 +84,7 @@ const WelcomeScreen = React.memo(({ onNavigateToLogin, onNavigateToSignup }) => 
       
       <View style={styles.heroSection}>
         <View style={styles.logoContainer}>
-          <Image source={require("../../assets/AIShortCut_logo-removebg.png")} style={styles.logoImage} resizeMode="contain" />
+          <Image source={require("../../assets/icon.png")} style={styles.logoImage} resizeMode="contain" />
           {/* <Text style={logoTextStyle}>
             AI ShortCut
           </Text> */}

@@ -6,11 +6,11 @@ name: 'AIShortCut',
 slug: 'AIShortCut',
 version: '1.0.0',
 orientation: 'portrait',
-icon: './assets/AIShortCut_logo-removebg.png',
+icon: './assets/icon.png',
 userInterfaceStyle: 'automatic',
 newArchEnabled: true,
 splash: {
-image: './assets/AIShortCut_logo-removebg.png',
+image: './assets/splash-icon.png',
 resizeMode: 'contain',
 backgroundColor: '#ffffff'
 },
