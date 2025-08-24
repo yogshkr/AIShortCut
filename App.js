@@ -91,6 +91,7 @@ export default function App() {
     });
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('[auth] onAuthStateChanged fired. user:', !!user)
       try {
         if (user) {
           const userData = {
