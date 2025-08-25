@@ -173,6 +173,13 @@ const FullArticleScreen = React.memo(({ article, onBack, currentUser }) => {
       color: theme.colors.accentText,
       textDecorationLine: 'underline',
     },
+    div: {
+      fontSize: 16,
+      lineHeight: 26,
+      textAlign: 'justify',
+      color: theme.colors.primaryText,
+      marginBottom: 15,
+  }
   }), [theme.colors]);
 
   // Memoized dynamic styles
