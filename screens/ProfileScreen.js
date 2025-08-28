@@ -34,10 +34,10 @@ const fetchUserStats = useCallback(async () => {
     
     if (userDocResult.exists()) {
       const userData = userDocResult.data();
-      const userArticlesRead = userData.stats?.articlesRead || 0;
-      
+      const userArticlesRead = userData.readArticles?.length || 0;
+      // console.log('User Articles Read:', userData.readArticles?.length || 0);
       setUserStats({
-        articlesRead: Math.min(userArticlesRead, totalArticlesAvailable), // Cap at total available
+        articlesRead: Math.min(userData.readArticles?.length || 0, totalArticlesAvailable), // Cap at total available
         articlesLiked: Math.min(userData.likedArticles?.length || 0, totalArticlesAvailable),
         articlesSaved: Math.min(userData.savedArticles?.length || 0, totalArticlesAvailable)
       });

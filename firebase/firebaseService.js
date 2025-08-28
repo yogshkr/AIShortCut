@@ -257,25 +257,37 @@ export const getUserSavedArticles = async (userId, allArticles) => {
  * @returns {Promise<boolean>} Success status
  */
 export const markArticleAsRead = async (userId, articleId) => {
-  if (!userId || !articleId) {
-    return false;
-  }
+  if (!userId || !articleId) return;
 
   try {
-    const userRef = doc(db, 'users', userId);
-    
-    await updateDoc(userRef, {
-      readArticles: arrayUnion(articleId),
-      'stats.articlesRead': increment(1),
-      lastReadAt: serverTimestamp()
-    });
-    
-    return true;
-  } catch (error) {
-    if (__DEV__) {
-      console.error('Error marking article as read:', error);
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const readArticles = userData.readArticles || []; // Assume array of article IDs
+
+      // Check for uniqueness
+      if (readArticles.includes(articleId)) {
+        // Already read: Skip to avoid overcounting
+        return;
+      }
+
+      // Mark as read (add to array and increment count)
+      await setDoc(userDocRef, {
+        readArticles: arrayUnion(articleId), // Appends if not present (Firestore ensures no duplicates in arrays)
+        articlesReadCount: increment(1) // Increment count only if unique
+      }, { merge: true });
+    } else {
+      // If no user doc, create one with initial read
+      await setDoc(userDocRef, {
+        readArticles: [articleId],
+        articlesReadCount: 1
+      });
     }
-    return false;
+  } catch (error) {
+    console.error('Error marking article as read:', error);
+    // Optional: Throw or handle for UI feedback
   }
 };
 

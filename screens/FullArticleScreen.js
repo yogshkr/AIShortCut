@@ -27,27 +27,30 @@ const FullArticleScreen = React.memo(({ article, onBack, currentUser }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setSaved] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
+  const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false); // NEW: Prevents multiple marks
 
-  // Load user interactions and mark as read
-  useEffect(() => {
-    const loadUserInteractions = async () => {
-      if (!currentUser || !article) return;
+useEffect(() => {
+  const loadUserInteractionsAndMarkRead = async () => {
+    if (!currentUser?.uid || !article?.id) return;
+    
+    try {
+      const userInteractions = await getUserInteractions(currentUser.uid);
+      setIsLiked(userInteractions.likedArticles?.includes(article.id) || false);
+      setSaved(userInteractions.savedArticles?.includes(article.id) || false);
       
-      try {
-        const userInteractions = await getUserInteractions(currentUser.uid);
-        setIsLiked(userInteractions.likedArticles?.includes(article.id) || false);
-        setSaved(userInteractions.savedArticles?.includes(article.id) || false);
-        
-        await markArticleAsRead(currentUser.uid, article.id);
-      } catch (error) {
-        if (__DEV__) {
-          console.error('Error loading user interactions:', error);
-        }
+      // Mark as read (now with uniqueness in firebaseService)
+      // await markArticleAsRead(currentUser.uid, article.id);
+      setHasMarkedAsRead(userInteractions.readArticles?.includes(article.id) || false);
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error in loadUserInteractionsAndMarkRead:', error);
       }
-    };
+    }
+  };
 
-    loadUserInteractions();
-  }, [currentUser, article]);
+  loadUserInteractionsAndMarkRead();
+}, [currentUser?.uid, article?.id]); // Use specific props to avoid unnecessary runs
+
 
   // Memoized scroll handler
   const handleScroll = useCallback((event) => {
@@ -56,11 +59,20 @@ const FullArticleScreen = React.memo(({ article, onBack, currentUser }) => {
     const progressPercent = Math.min(Math.max(progress, 0), 1);
     
     setReadingProgress(progressPercent);
-    
+    if (currentUser?.uid && article?.id && progressPercent >= 0.50 && !hasMarkedAsRead) {
+      markArticleAsRead(currentUser.uid, article.id)
+        .then(() => {
+          setHasMarkedAsRead(true);
+          console.log('Marked as read for article:', article.id); // Debug confirmation
+        })
+        .catch((error) => {
+          if (__DEV__) console.error('Error marking as read:', error);
+        });
+    }
     if (currentUser && article && progressPercent > 0.1) {
       updateReadingProgress(currentUser.uid, article.id, Math.round(progressPercent * 100));
     }
-  }, [currentUser, article]);
+  }, [currentUser, article, hasMarkedAsRead]);
 
   // Memoized like handler
   const handleLike = useCallback(async () => {

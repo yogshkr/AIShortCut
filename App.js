@@ -2,7 +2,8 @@ import React, { useState, useEffect, createContext, useContext, useCallback, use
 import { StatusBar } from 'expo-status-bar';
 import { View, Appearance, Alert, Platform, BackHandler, ToastAndroid, ActivityIndicator } from 'react-native';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from './firebase/firebaseConfig';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from './firebase/firebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -41,21 +42,56 @@ export default function App() {
   const [selectedArticle, setSelectedArticle] = useState(null);
 
   // Theme state
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(Appearance.getColorScheme() === 'dark');
   const [isSystemPreference, setIsSystemPreference] = useState(true);
+const saveTimeoutRef = useRef(null);
+  // NEW: Helper to save theme prefs to Firestore
+  // Updated: Save function takes explicit params to avoid stale closures
+  const saveThemePreferences = useCallback(async (userId, newIsSystemPreference, newIsDarkMode) => {
+    if (!userId) return;
+
+    // Debounce to prevent rapid duplicate saves
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        const userDocRef = doc(db, 'users', userId);
+        await setDoc(userDocRef, {
+          preferences: {
+            theme: {
+              isSystemPreference: newIsSystemPreference,
+              isDarkMode: newIsDarkMode,
+            }
+          }
+        }, { merge: true });
+        console.log('Theme preferences saved successfully'); // Optional: For debugging
+      } catch (error) {
+        console.error('Error saving theme prefs:', error);
+      }
+    }, 300); // 300ms debounce
+  }, []);
 
   // Memoized theme object to prevent unnecessary re-renders
   const theme = useMemo(() => ({
     isDark: isDarkMode,
     isSystemPreference,
     toggleDarkMode: () => {
-      setIsSystemPreference(false);
-      setIsDarkMode(prev => !prev);
+      const newIsSystemPreference = false;
+      const newIsDarkMode = !isDarkMode; // Calculate new value first
+      setIsSystemPreference(newIsSystemPreference);
+      setIsDarkMode(newIsDarkMode);
+      if (currentUser?.uid) {
+        saveThemePreferences(currentUser.uid, newIsSystemPreference, newIsDarkMode);
+      }
     },
     resetToSystemPreference: () => {
-      setIsSystemPreference(true);
+      const newIsSystemPreference = true;
       const systemColorScheme = Appearance.getColorScheme();
-      setIsDarkMode(systemColorScheme === 'dark');
+      const newIsDarkMode = systemColorScheme === 'dark';
+      setIsSystemPreference(newIsSystemPreference);
+      setIsDarkMode(newIsDarkMode);
+      if (currentUser?.uid) {
+        saveThemePreferences(currentUser.uid, newIsSystemPreference, newIsDarkMode);
+      }
     },
     colors: {
       background: isDarkMode ? '#0f172a' : '#f1f5f9',
@@ -77,59 +113,89 @@ export default function App() {
       headerSubtext: isDarkMode ? '#93c5fd' : '#bfdbfe',
       headerButton: 'rgba(255, 255, 255, 0.15)',
     }
-  }), [isDarkMode, isSystemPreference]);
+  }), [isDarkMode, currentUser?.uid, saveThemePreferences]);
 
   // System theme + Firebase auth listener
   useEffect(() => {
-    const systemColorScheme = Appearance.getColorScheme();
-    setIsDarkMode(systemColorScheme === 'dark');
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    console.log('[auth] onAuthStateChanged fired. user:', !!user);
+    try {
+      if (user) {
+        const userData = {
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName || (user.email ? user.email.split('@')[0] : 'User'),
+        };
+        setCurrentUser(userData);
+        setIsAuthenticated(true);
+        await AsyncStorage.setItem('currentUser', JSON.stringify(userData));
 
-    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      if (isSystemPreference) {
-        setIsDarkMode(colorScheme === 'dark');
+        // Ensure main app starts from a clean root (only relevant on actual auth changes)
+        setCurrentScreen('Home');
+        setSelectedArticle(null);
+      } else {
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+        await AsyncStorage.removeItem('currentUser');
+
+        // Ensure auth flow starts from Welcome
+        setAuthScreen('Welcome');
+        // Clear any residual app state
+        setCurrentScreen('Home');
+        setSelectedArticle(null);
       }
-    });
+    } catch (error) {
+      // Silent error handling
+    } finally {
+      setLoading(false);
+    }
+  });
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('[auth] onAuthStateChanged fired. user:', !!user)
+  return () => unsubscribe();
+}, []); // Empty deps: subscribe once on mount
+
+// NEW: Separate useEffect for theme listener (only adds/removes listener based on isSystemPreference)
+useEffect(() => {
+  if (!isSystemPreference) return; // Don't listen if manual mode
+
+  const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+    setIsDarkMode(colorScheme === 'dark');
+  });
+
+  return () => subscription?.remove();
+}, [isSystemPreference]);
+
+// NEW: Load theme prefs from Firestore after auth (only when user changes)
+  useEffect(() => {
+    const loadThemePreferences = async (userId) => {
+      if (!userId) return;
       try {
-        if (user) {
-          const userData = {
-            uid: user.uid,
-            email: user.email,
-            name: user.displayName || (user.email ? user.email.split('@')[0] : 'User'),
-          };
-          setCurrentUser(userData);
-          setIsAuthenticated(true);
-          await AsyncStorage.setItem('currentUser', JSON.stringify(userData));
-
-          // Ensure main app starts from a clean root
-          setCurrentScreen('Home');
-          setSelectedArticle(null);
-        } else {
-          setCurrentUser(null);
-          setIsAuthenticated(false);
-          await AsyncStorage.removeItem('currentUser');
-
-          // Ensure auth flow starts from Welcome
-          setAuthScreen('Welcome');
-          // Clear any residual app state
-          setCurrentScreen('Home');
-          setSelectedArticle(null);
+        const userDocRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const prefs = userDoc.data()?.preferences?.theme;
+          if (prefs) {
+            setIsSystemPreference(prefs.isSystemPreference ?? true);
+            setIsDarkMode(prefs.isDarkMode ?? (Appearance.getColorScheme() === 'dark'));
+          }
         }
       } catch (error) {
-        // Silent error handling; consider logging in dev builds
-      } finally {
-        setLoading(false);
+        console.error('Error loading theme prefs:', error);
+        // Fallback to defaults silently
       }
-    });
-
-    return () => {
-      subscription?.remove();
-      unsubscribe();
     };
-  }, [isSystemPreference]);
 
+    if (isAuthenticated && currentUser?.uid) {
+      loadThemePreferences(currentUser.uid);
+    }
+  }, [isAuthenticated, currentUser?.uid]); // Runs on auth/user change
+
+  // ... (rest of your code remains the same: back handler, renders, etc.)
+useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, []);
   // Auth flow navigation (callbacks should NOT flip isAuthenticated or force Home)
   const handleAuthNavigation = useCallback((screenName) => {
     setAuthScreen(screenName);
