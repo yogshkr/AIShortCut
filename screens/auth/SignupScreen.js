@@ -368,12 +368,12 @@ Alert.alert(
           <View style={[styles.terms, { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }]}>
 <Text style={termsTextStyle}>By creating an account, you agree to our </Text>
 <TouchableOpacity 
-            onPress={() => Linking.openURL('https://copyassignment.com/terms-of-service-aishortcut/')} activeOpacity={0.7}>
+            onPress={() => Linking.openURL('https://pythonhub.in/terms-of-service-aishortcut/')} activeOpacity={0.7}>
 <Text style={[termsTextStyle, termsLinkStyle]}>Terms of Service</Text>
 </TouchableOpacity>
 <Text style={termsTextStyle}> and </Text>
 <TouchableOpacity 
-            onPress={() => Linking.openURL('https://copyassignment.com/privacy-policy-aishortcut/')} activeOpacity={0.7}>
+            onPress={() => Linking.openURL('https://pythonhub.in/privacy-policy-aishortcut/')} activeOpacity={0.7}>
 <Text style={[termsTextStyle, termsLinkStyle]}>Privacy Policy</Text>
 </TouchableOpacity>
 <Text style={termsTextStyle}>.</Text>

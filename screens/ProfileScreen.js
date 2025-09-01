@@ -263,7 +263,7 @@ const fetchUserStats = useCallback(async () => {
 const handleDeleteAccountInfo = useCallback(() => {
 Alert.alert(
 'Request Account Deletion',
-'To delete your account and associated data, please email us from your registered address at admin@copyassignment.com with the subject: "AIShortCut Account Deletion".\n\nWe will verify your request and process deletion as soon as possible.',
+'To delete your account and associated data, please email us from your registered address at contact@pythonhub.in with the subject: "AIShortCut Account Deletion".\n\nWe will verify your request and process deletion as soon as possible.',
 [
 { text: 'Cancel', style: 'cancel' },
 {
@@ -280,16 +280,16 @@ Registered email: ${currentUser?.email || ''}
 
 Thank you.`
 );
-const mailto = 'mailto:admin@copyassignment.com?subject=' + subject + '&body=' + body;
+const mailto = 'mailto:contact@python.hub.in?subject=' + subject + '&body=' + body;
 try {
 const supported = await Linking.canOpenURL(mailto);
 if (supported) {
 await Linking.openURL(mailto);
 } else {
-Alert.alert('Unable to open email app', 'Please email admin@copyassignment.com from your registered address.');
+Alert.alert('Unable to open email app', 'Please email contact@python.hub.in from your registered address.');
 }
 } catch {
-Alert.alert('Unable to open email app', 'Please email admin@copyassignment.com from your registered address.');
+Alert.alert('Unable to open email app', 'Please email contact@python.hub.in from your registered address.');
 }
 }
 }
@@ -424,7 +424,7 @@ Alert.alert('Unable to open email app', 'Please email admin@copyassignment.com f
 
           <TouchableOpacity
             style={actionItemStyle}
-            onPress={() => Linking.openURL('https://copyassignment.com/terms-of-service-aishortcut/')}
+            onPress={() => Linking.openURL('https://pythonhub.in/terms-of-service-aishortcut/')}
             activeOpacity={0.7}
             >
               
@@ -435,7 +435,7 @@ Alert.alert('Unable to open email app', 'Please email admin@copyassignment.com f
               
           <TouchableOpacity
             style={actionItemStyle}
-            onPress={() => Linking.openURL('https://copyassignment.com/privacy-policy-aishortcut/')}
+            onPress={() => Linking.openURL('https://pythonhub.in/privacy-policy-aishortcut/')}
             activeOpacity={0.7}
               >
             <Text style={styles.actionIcon}>🔒</Text>

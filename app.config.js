@@ -41,9 +41,9 @@ messagingSenderId: process.env.MESSAGING_SENDER_ID,
 appId: process.env.APP_ID,
 measurementId: process.env.MEASUREMENT_ID,
 policyUrls: {
-privacy: 'https://copyassignment.com/privacy-policy-aishortcut/',
-terms: 'https://copyassignment.com/terms-of-service-aishortcut/',
-supportEmail: 'admin@copyassignment.com'
+privacy: 'https://pythonhub.in/privacy-policy-aishortcut/',
+terms: 'https://pythonhub.in/terms-of-service-aishortcut/',
+supportEmail: 'contact@pythonhub.in'
 },
 eas: {
 projectId: 'c5b28119-e389-45a6-a311-41340f510307'
