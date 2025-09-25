@@ -132,7 +132,7 @@ const WelcomeScreen = React.memo(({ onNavigateToLogin, onNavigateToSignup }) => 
 
       <View style={styles.footer}>
         <Text style={footerTextStyle}>
-          Join thousands of AI enthusiasts
+          {/* Join thousands of AI enthusiasts */}
         </Text>
       </View>
     </View>
